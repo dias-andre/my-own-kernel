@@ -20,7 +20,7 @@ LINKER_FILES_64 = $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
 LINKER_FILES_32 = $(BUILD_DIR)/multiboot_header.o $(BUILD_DIR)/starter.o $(BUILD_DIR)/thread.o
 
 KERNEL_FLAGS_64 = -g -Wno-error=incompatible-pointer-types  -Wno-error=int-conversion -fno-stack-protector -c \
- -ffreestanding -fno-asynchronous-unwind-tables -fno-pie -Wint-conversion $(addprefix -I,$(INCLUDE_DIRS))
+ -ffreestanding -fno-asynchronous-unwind-tables -fno-pie -Wint-conversion -Wint-to-pointer-cast $(addprefix -I,$(INCLUDE_DIRS))
 
 ALL_LINKER_FILES = $(LINKER_FILES_32) $(LINKER_FILES_64)
 
@@ -43,7 +43,7 @@ build64: $(INIT_KERNEL_FILES) $(BOOTSTRAP_FILE) $(KERNEL_FILES)
 	# Preparando para o GRUB
 	cp $(BUILD_DIR)/square-kernel.elf root_iso/boot/
 
-	grub-mkrescue -o square-kernel.iso root_iso
+	grub2-mkrescue -o square-kernel.iso root_iso
 
 run: $(OUTFILE)
 	qemu-system-x86_64 -drive format=raw,file=$(OUTFILE)
