@@ -3,6 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <memory/page_allocator.h>
+#include <video/vga_buffer.h>
 
 uintptr_t heap_top = 0;
 uintptr_t lastblock = 0;
