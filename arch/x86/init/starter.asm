@@ -5,9 +5,11 @@ extern kernel_main
 global start
 
 start:
-    mov word [0xb8000], 0x0248 ; H
-    call long_mode_paging
-    jmp enter_long_mode
+  mov esp, stack_top
+  
+  mov word [0xb8000], 0x0248 ; H
+  call long_mode_paging
+  jmp enter_long_mode
 
 long_mode_paging:
     ; Point the first entry of the level 4 page table to the first entry in the
@@ -62,40 +64,31 @@ enter_long_mode:
     cli
     lgdt [gdt_descriptor]
 
-    ; Enable long mode and paging
-    mov eax, cr4
-    or eax, 0x20
-    mov cr4, eax
-
-    mov ecx, 0xC0000080
-    rdmsr
-    or eax, (1 << 8)
-    wrmsr
-
-    ; Enable paging
-    mov eax, cr0
-    or eax, 0x80000000
-    or eax, 0x00000001
-    mov cr0, eax
-
     ; Far jump to 64-bit mode
-    jmp 08h:kernel_entry
+    jmp 0x08:kernel_entry
 
 ; 64-bit kernel entry point
 bits 64
 
 kernel_entry:
-    ; Update segment registers
-    mov ax, 10h
-    mov ds, ax
-    mov es, ax
-    mov fs, ax
-    mov gs, ax
-    mov ss, ax
+  ; Clear segment registers
+  xor ax, ax
+  mov ds, ax
+  mov es, ax,
+  mov fs, ax
+  mov gs, ax
+  mov ss, ax
+  
+  mov rsp, stack64_top
+  and rsp, -16
 
-    ; Jump to the 64-bit kernel main function
-    call kernel_main
-    hlt
+  ; Load TSS
+  ; mov ax, 0x28 
+  ; ltr ax 
+  ; Kernel has a custom TSS
+
+  call kernel_main
+  hlt
 
 section .bss
 align 4096
@@ -107,42 +100,52 @@ p3_table:
 p2_table:
     resb 4096
 
+stack_bottom:
+  resb 4096
+stack_top:
+
+stack64_bottom:
+  resb 4096
+stack64_top:
+
 section .data
 align 8
 
 gdt:
-    dq 0x0000000000000000 ; Null segment
-    dq 0x00af9a000000ffff ; Code segment
-    dq 0x00cf92000000ffff ; Data segment
-    dq 0x0000000000000000 ; Unused
-    dq 0x0000000000000000 ; Unused
-    dq 0x0000000000000000 ; TSS segment
-
-gdt_end:
+  .null dq 0
+  .code dq (1<<44) | (1<<47) | (1<<41) | (1<<43) | (1<<53) ; 64-bit code
+  .data dq (1<<44) | (1<<47) | (1<<41) ; Data segment
+  .unused dq 0 ; unused
+  .unused2 dq 0 ; unused
+  .tss_low dq 0
+  .tss_high dq 0
+  .end:
 
 gdt_descriptor:
-    dw gdt_end - gdt - 1
-    dq gdt
+  dw gdt.end - gdt - 1
+  dq gdt
 
 section .text
 global gdt_set_entry
 
 gdt_set_entry:
-    ; Arguments:
-    ; rdi - index
-    ; rsi - base
-    ; rdx - limit
-    ; rcx - access
-    ; r8  - flags
-    mov rax, rsi
-    mov word [gdt + rdi * 8 + 0], dx
-    shr rdx, 16
-    mov byte [gdt + rdi * 8 + 2], dl
-    mov byte [gdt + rdi * 8 + 3], cl
-    mov byte [gdt + rdi * 8 + 4], r8b
-    shr rsi, 16
-    mov byte [gdt + rdi * 8 + 7], al ; movendo para byte e garantindo que seja 8 bits
-    mov word [gdt + rdi * 8 + 6], ax ; movendo para word e garantindo que seja 16 bits
-    shr rsi, 16
-    mov byte [gdt + rdi * 8 + 5], al ; movendo para byte e garantindo que seja 8 bits
-    ret
+  
+  mov eax, edx 
+  and eax, 0xFFFF
+  movzx r9d, cx
+  shl r9d, 16
+  or eax, r9d
+  mov [gdt + rdi * 8], eax
+
+  mov eax, esi
+  shr eax, 16
+  and eax, 0xFF
+  movzx r9d, r8b
+  shl r9d, 8
+  or eax, r9d
+  mov [gdt + rdi * 8 + 4], eax
+
+  mov rax, rsi
+  shr rax, 24
+  mov [gdt + rdi * 8 + 8], eax
+  ret
