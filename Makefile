@@ -15,7 +15,7 @@ LINKER = linker.ld
 
 LINKER_FILES_64 = $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
  $(KERNEL_OBJECT) $(BUILD_DIR)/vga_buffer.elf $(BUILD_DIR)/liballoc.o \
- $(BUILD_DIR)/page_allocator.o $(BUILD_DIR)/string.o $(BUILD_DIR)/MMU.o
+ $(BUILD_DIR)/string.o $(BUILD_DIR)/MMU.o  $(BUILD_DIR)/spinlock.o $(BUILD_DIR)/paging.o
  
 LINKER_FILES_32 = $(BUILD_DIR)/multiboot_header.o $(BUILD_DIR)/starter.o $(BUILD_DIR)/thread.o
 
@@ -35,8 +35,9 @@ build64: $(INIT_KERNEL_FILES) $(BOOTSTRAP_FILE) $(KERNEL_FILES)
 	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/vga/vga_buffer.c -o $(BUILD_DIR)/vga_buffer.elf
 	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/liballoc.c -o $(BUILD_DIR)/liballoc.o
 	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/MMU.c -o $(BUILD_DIR)/MMU.o
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/page_allocator.c -o $(BUILD_DIR)/page_allocator.o
 	$(CC) $(KERNEL_FLAGS_64) lib/string.c -o $(BUILD_DIR)/string.o
+	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/spinlock.c -o $(BUILD_DIR)/spinlock.o
+	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/paging/paging.c -o $(BUILD_DIR)/paging.o
 	
 	ld -m elf_x86_64 -T linker.ld -o $(BUILD_DIR)/square-kernel.elf $(ALL_LINKER_FILES)
 

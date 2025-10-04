@@ -2,6 +2,7 @@
 #include <video/colors.h>
 #include <memory/memory_manager.h>
 #include <thread.h>
+#include <stdint.h>
 
 #ifndef DEBUG
 //#define DEBUG
@@ -61,7 +62,6 @@ void kernel_main() {
   }
 
   println("64-Bit Mode");
-  println("Paging initialized!");
   println("GDT Loaded!");
   load_idt();
   println("IDT Loaded!");

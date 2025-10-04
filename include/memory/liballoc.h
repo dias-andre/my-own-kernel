@@ -9,7 +9,7 @@ typedef struct heap_block {
 
 extern uintptr_t heap_top;
 
-extern void heap_init(uintptr_t start);
+extern void heap_init();
 extern uintptr_t find_free_block(size_t size);
 extern uintptr_t push_block(size_t size);
 
