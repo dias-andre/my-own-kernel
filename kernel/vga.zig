@@ -45,6 +45,7 @@ pub fn print(str: []const u8) void {
         putChar(char);
     }
 }
+
 pub fn printHex(value: u64) void {
     const hex_chars = "0123456789ABCDEF";
     var v = value;
@@ -92,6 +93,13 @@ pub fn printDec(value: usize) void {
         index -= 1;
         putChar(buffer[index]);
     }
+}
+
+pub fn printError(value: []const u8) void {
+    setColor(Color.White, Color.Red);
+    print(value);
+    setDefaultColor();
+    print("\n");
 }
 
 fn putChar(c: u8) void {
