@@ -41,15 +41,15 @@ pub fn init(mb_pointer: u64, mb_magic: u64) *MultibootInfo {
     var i: usize = 0;
     while(current_addr < end_addr) : (i += 1) {
       if(current_addr + @sizeOf(MemoryMapEntry) > end_addr) {
-        vga.print("End of buffer reached (insufficient bytes).\n");
+        vga.print("\nEnd of buffer reached (insufficient bytes).\n");
         break;
       }
 
       const entry_ptr: *align(1) const MemoryMapEntry = @ptrFromInt(current_addr);
       const entry = entry_ptr.*;
-
+      
       vga.print("#");
-      vga.printHex(entry.addr);
+      vga.printDec(i);
       vga.print(" Offset: 0x");
       vga.printHex(current_addr);
 

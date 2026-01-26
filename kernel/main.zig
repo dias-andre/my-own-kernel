@@ -9,7 +9,7 @@ extern var _end: u8;
 export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     vga.setColor(vga.Color.Green, vga.Color.Black);
     vga.clear();
-    vga.print("Execution reached kernel main!!\n");
+    vga.print("The execution reached the kernel entry.\n");
     vga.setDefaultColor();
     idt.init();
 
