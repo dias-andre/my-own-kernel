@@ -1,7 +1,7 @@
 const vga = @import("vga.zig");
 const idt = @import("arch/x86/idt.zig");
 const mb = @import("multiboot.zig");
-const pmm = @import("mm/pmm.zig");
+const mm = @import("./mm/index.zig");
 
 extern var _start: u8;
 extern var _end: u8;
@@ -17,22 +17,14 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     const mb_info = mb.init(pointer, magic);
 
     const kernel_end_addr = @intFromPtr(&_end);
-    vga.print("Kernel ends at: 0x");
-    vga.printHex(kernel_end_addr);
-    vga.print("\n");
+    // vga.print("Kernel ends at: 0x");
+    // vga.printHex(kernel_end_addr);
+    // vga.print("\n");
 
-    pmm.init(mb_info, kernel_end_addr);
+    // starts memory management subsystem
+    mm.init(mb_info, kernel_end_addr);
 
-    vga.print("\nTesting pmm allocator...\n");
-    if(pmm.allocate_page()) |addr| {
-        vga.print("Successfully! Page allocated in: 0x");
-        vga.printHex(addr);
-        vga.print("\n");
-        pmm.free_page(addr);
-        vga.print("\nFree page: ok!\n");
-    } else {
-        vga.printError("Error: OOM (Out of Memory)!");
-    }
+    vga.print("\nKernel is alive and paged!\n");
     while (true) {
         asm volatile ("hlt");
     }
