@@ -22,6 +22,17 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     vga.print("\n");
 
     pmm.init(mb_info, kernel_end_addr);
+
+    vga.print("\nTesting pmm allocator...\n");
+    if(pmm.allocate_page()) |addr| {
+        vga.print("Successfully! Page allocated in: 0x");
+        vga.printHex(addr);
+        vga.print("\n");
+        pmm.free_page(addr);
+        vga.print("\nFree page: ok!\n");
+    } else {
+        vga.printError("Error: OOM (Out of Memory)!");
+    }
     while (true) {
         asm volatile ("hlt");
     }
