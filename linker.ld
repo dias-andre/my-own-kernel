@@ -2,6 +2,7 @@ ENTRY(start)
 
 SECTIONS {
     . = 1M;
+    _start = .;
 
     .boot :
     {
@@ -13,4 +14,22 @@ SECTIONS {
     {
         *(.text)
     }
+
+    .rodata :
+    {
+        *(.rodata)
+    }
+
+    .data :
+    {
+        *(.data)
+    }
+
+    .bss :
+    {
+        *(COMMON)
+        *(.bss)
+    }
+
+    _end = .;
 }
