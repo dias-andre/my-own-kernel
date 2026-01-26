@@ -21,6 +21,10 @@ pub fn setColor(fg: Color, bg: Color) void {
     color_attr = (@intFromEnum(bg) << 4) | @intFromEnum(fg);
 }
 
+pub fn setDefaultColor() void {
+    setColor(Color.White, Color.Black);
+}
+
 pub fn clear() void {
     const buffer: [*]volatile u16 = @ptrFromInt(VIDEO_ADDRESS);
 
@@ -39,6 +43,54 @@ pub fn clear() void {
 pub fn print(str: []const u8) void {
     for (str) |char| {
         putChar(char);
+    }
+}
+pub fn printHex(value: u64) void {
+    const hex_chars = "0123456789ABCDEF";
+    var v = value;
+
+    if (v == 0) {
+        print("0");
+        return;
+    }
+
+    var buffer: [20]u8 = undefined;
+    var index: usize = 0;
+
+    while (v > 0) {
+        const nibble = v % 16;
+        buffer[index] = hex_chars[nibble];
+        index += 1;
+        v = v / 16;
+    }
+
+    while (index > 0) {
+        index -= 1;
+        const char_slice = buffer[index .. index + 1];
+        print(char_slice);
+    }
+}
+
+pub fn printDec(value: usize) void {
+    if (value == 0) {
+        putChar('0');
+        return;
+    }
+
+    var v = value;
+    var buffer: [20]u8 = undefined;
+    var index: usize = 0;
+
+    while (v > 0) {
+        const digit = v % 10; // Pega o último dígito
+        buffer[index] = '0' + @as(u8, @intCast(digit)); // Converte para char ASCII
+        index += 1;
+        v = v / 10;
+    }
+
+    while (index > 0) {
+        index -= 1;
+        putChar(buffer[index]);
     }
 }
 
