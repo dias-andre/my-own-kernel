@@ -7,9 +7,27 @@ global start
 start:
   mov esp, stack_top
   
+  ; save multiboot state
+  mov [mb_magic_store], eax
+  mov [mb_addr_store], ebx
+
+  call enable_sse
   mov word [0xb8000], 0x0248 ; H
+
   call long_mode_paging
   jmp enter_long_mode
+
+
+enable_sse:
+  mov eax, cr0
+  and ax, 0xfffb
+  or ax, 0x2
+  mov cr0, eax
+
+  mov eax, cr4
+  or ax, (3 << 9)
+  mov cr4, eax
+  ret
 
 long_mode_paging:
     ; Point the first entry of the level 4 page table to the first entry in the
@@ -33,7 +51,7 @@ long_mode_paging:
     mov [p2_table + ecx * 8], eax
 
     inc ecx
-    cmp ecx, 512
+    cmp ecx, 512       ; Mapeia 1GB de RAM (512 * 2MB)
     jne .map_p2_table
 
     ; move page table address to cr3
@@ -74,38 +92,46 @@ kernel_entry:
   ; Clear segment registers
   xor ax, ax
   mov ds, ax
-  mov es, ax,
+  mov es, ax  ; <--- CORRIGIDO (Tinha uma vírgula aqui)
   mov fs, ax
   mov gs, ax
   mov ss, ax
   
+  ; Configura a stack 64-bit
   mov rsp, stack64_top
+  
+  ; Garante alinhamento de 16 bytes (exigido pela ABI do Zig/C)
   and rsp, -16
 
-  ; Load TSS
-  ; mov ax, 0x28 
-  ; ltr ax 
-  ; Kernel has a custom TSS
+  ; Restaura os argumentos para passar pro Zig
+  mov edi, [mb_addr_store]
+  mov esi, [mb_magic_store]
 
   call kernel_main
   hlt
 
 section .bss
-align 4096
+
+mb_magic_store:
+  resd 1
+mb_addr_store:
+  resd 1
+
+alignb 4096
 
 p4_table:
-    resb 4096
+  resb 4096
 p3_table:
-    resb 4096
+  resb 4096
 p2_table:
-    resb 4096
+  resb 4096
 
 stack_bottom:
   resb 4096
 stack_top:
 
 stack64_bottom:
-  resb 4096
+  resb 16384 ;  16KB 
 stack64_top:
 
 section .data
@@ -115,8 +141,8 @@ gdt:
   .null dq 0
   .code dq (1<<44) | (1<<47) | (1<<41) | (1<<43) | (1<<53) ; 64-bit code
   .data dq (1<<44) | (1<<47) | (1<<41) ; Data segment
-  .unused dq 0 ; unused
-  .unused2 dq 0 ; unused
+  .unused dq 0 
+  .unused2 dq 0
   .tss_low dq 0
   .tss_high dq 0
   .end:
@@ -129,7 +155,6 @@ section .text
 global gdt_set_entry
 
 gdt_set_entry:
-  
   mov eax, edx 
   and eax, 0xFFFF
   movzx r9d, cx
