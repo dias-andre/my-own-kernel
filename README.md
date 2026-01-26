@@ -1,67 +1,99 @@
+# 🦎 My Own Kernel (Zig Edition)
 
-# square-kernel
+![Zig](https://img.shields.io/badge/Made%20with-Zig-orange?style=for-the-badge&logo=zig)
+![Assembly](https://img.shields.io/badge/Arch-x86__64-blue?style=for-the-badge&logo=intel)
 
-Um kernel para processadores x86 simples e open-source, desenvolvido por hobby na tentativa de aprender sobre o assunto. 
+Um kernel experimental escrito do zero, focando em modernidade e segurança de memória. Inicialmente concebido em C, o projeto foi **migrado para Zig** para explorar recursos de linguagem moderna em desenvolvimento de baixo nível (OSDev).
 
-<img src="docs/print.png">
+O objetivo é construir um pequeno sistema operacional x86_64 compatível com Multiboot, implementando gerenciamento de memória, interrupções e drivers básicos.
 
-# Implementações
+---
 
-- Long-Mode *64 bits*  *(implementado)*
+## 📸 Screenshots
 
-- Video: Vga-Buffer *(implementado)*
+> *Estado atual do kernel rodando no QEMU, exibindo o mapa de memória e o PMM inicializado.*
 
-- Basic *MM* - Memory Manager *(implementado)*
+![Kernel Screenshot](./docs/print.png)
 
-- Basic *PM* - Process Manager *(em progresso)*
 
-- Advanced *PM*
+---
 
-- Basic *FS* - File System
+## 🚀 Status do Projeto
 
-- Hardware Suport (Teclado e etc)
+O kernel está na fase de **Gerenciamento de Memória Física**. Estou terminando de migrar a base de código de C para Zig e estabelecer as fundações do sistema.
 
-  
+### ✅ Implementado
+- [x] **Bootloader:** Suporte a Multiboot (GRUB) via Assembly (`multiboot_header.asm`).
+- [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`main.zig`).
+- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`vga.zig`).
+- [x] **IDT (Interrupt Descriptor Table):** Tratamento básico de interrupções e exceções implementado em Zig.
+- [x] **Multiboot Parsing:** Leitura do mapa de memória fornecido pelo BIOS/GRUB.
+- [x] **PMM (Physical Memory Manager):**
+  - Alocador de páginas físicas (4KB).
+  - Uso de **Bitmap** para rastrear memória livre/ocupada.
+  - Proteção de memória do Kernel e do próprio Bitmap.
 
-## Compilação e Emulação
+### 🚧 Em Progresso / Próximos Passos
+- [ ] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
+- [ ] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
+- [ ] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
+- [ ] **Keyboard Driver:** Driver PS/2 básico para entrada de dados.
 
-**Não é recomendado tentar dar boot em uma máquina real, o projeto ainda segue incompleto e não há certeza que a segurança para o hardware é garantida**
+---
 
-### Dependências de Compilação
+## 🛠️ Como Compilar e Rodar
 
- - nasm - *compilador assembly x86*
- - gcc - *compilador C*
- - ld - *linker*
+### Dependências
+Para compilar este projeto, você precisará das seguintes ferramentas instaladas no seu Linux (Manjaro/Arch ou similar):
 
-### Baixe um emulador
+* **Zig** (Compilador principal)
+* **NASM** (Assembler para os stubs de boot)
+* **QEMU** (Emulador para testes)
+* **GRUB / xorriso** (Para criar a imagem ISO bootável)
+* **Linker (`ld`)** (Geralmente parte do binutils)
 
-Para rodar o projeto é necessário ter um emulador de x86 instalado, o projeto usa o QEMU
+### Comandos (Makefile)
 
-### Baixe o projeto do github:
+O projeto utiliza um `Makefile` automatizado para facilitar o fluxo de desenvolvimento:
 
-	git clone https://github.com/https-dre/square-kernel/tree/main
-	cd square-kernel
+```bash
+# Compilar todo o kernel e gerar a ISO
+make all
 
-### Crie um diretório para os arquivos de construção
+# Compilar e rodar imediatamente no QEMU
+make run
 
-	mkdir build
+# Limpar arquivos de build (.o, .elf, .iso)
+make clean
 
-### Rode o Makefile
+# Rodar em modo Debug (aguarda conexão do GDB)
+make debug
 
-Gerando disco virtual com o kernel:
+```
 
-	make build
+---
 
-Rode o kernel junto com o bootloader:
+## 📂 Estrutura do Projeto
 
-	make run
+```text
+/
+├── kernel/
+│   ├── arch/x86/        # Código específico de arquitetura (Assembly/Boot)
+│   ├── mm/              # Gerenciamento de Memória (PMM, Bitmap)
+│   ├── main.zig         # Ponto de entrada do Kernel
+│   ├── vga.zig          # Driver de Vídeo (Texto)
+│   └── multiboot.zig    # Parsing do cabeçalho Multiboot
+├── linker.ld            # Script de Linkagem
+└── Makefile             # Automação de build
 
-Para rodar o disco virtual no Vmware:
+```
 
-	make release_vmware
+---
 
-Então um disco virtual .vmdk vai ser gerado, tente dar boot com esse disco no Vmware.
+## 🧠 Aprendizados
 
-## Licença
+Este projeto é um estudo prático sobre:
 
-Este projeto está licenciado sob a Licença Publica Geral GNU v3.0 - veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+1. **Interoperabilidade Zig/C/Assembly:** Como o Zig interage com código "naked" e convenções de chamada C.
+2. **Hardware Real:** Manipulação direta de endereços de memória, VGA buffer e registradores da CPU.
+3. **Algoritmos de OS:** Implementação manual de estruturas de dados como Bitmaps e Listas Encadeadas sem biblioteca padrão (`libc` ou `std`).

@@ -1,56 +1,88 @@
 ASM = nasm
 CC = gcc
+ZIG = zig
+
+# --- DIRECTORIES ---
 SRC_DIR = .
-ASM_DIR = $(SRC_DIR)/arch/x86
+KERNEL_DIR = $(SRC_DIR)/kernel
+ASM_DIR = $(KERNEL_DIR)/arch/x86
 BUILD_DIR = build
-BOOTSTRAP_FILE = $(ASM_DIR)/init/bootstrap.asm
+ISO_DIR = root_iso
+
+# --- FILES ---
+# Assembly
 INIT_KERNEL_FILES = $(ASM_DIR)/init/starter.asm 
 MULTIBOOT_FILE = $(ASM_DIR)/init/multiboot_header.asm
-KERNEL_FILES = $(SRC_DIR)/kernel/main.c
-INCLUDE_DIRS = $(shell find include -type d)
 
-KERNEL_OBJECT = $(BUILD_DIR)/kernel.elf
-OUTFILE = square-kernel.iso
-LINKER = linker.ld
+# Zig: Recursively find all .zig files inside kernel/
+KERNEL_SOURCES = $(shell find $(KERNEL_DIR) -name "*.zig")
 
-LINKER_FILES_64 = $(BUILD_DIR)/idt.o $(BUILD_DIR)/interrupts.o \
- $(KERNEL_OBJECT) $(BUILD_DIR)/vga_buffer.elf $(BUILD_DIR)/liballoc.o \
- $(BUILD_DIR)/page_allocator.o $(BUILD_DIR)/string.o $(BUILD_DIR)/MMU.o
- 
-LINKER_FILES_32 = $(BUILD_DIR)/multiboot_header.o $(BUILD_DIR)/starter.o $(BUILD_DIR)/thread.o
+# Generated Objects
+OBJ_ASM_START = $(BUILD_DIR)/starter.o
+OBJ_ASM_MULTI = $(BUILD_DIR)/multiboot_header.o
+OBJ_ZIG_MAIN  = $(BUILD_DIR)/main.o
 
-KERNEL_FLAGS_64 = -g -Wno-error=incompatible-pointer-types  -Wno-error=int-conversion -fno-stack-protector -c \
- -ffreestanding -fno-asynchronous-unwind-tables -fno-pie -Wint-conversion $(addprefix -I,$(INCLUDE_DIRS))
+# Final Binary
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
+ISO_FILE = kernel.iso
+LINKER_SCRIPT = linker.ld
 
-ALL_LINKER_FILES = $(LINKER_FILES_32) $(LINKER_FILES_64)
+.PHONY: all run debug clean info
 
-build64: $(INIT_KERNEL_FILES) $(BOOTSTRAP_FILE) $(KERNEL_FILES)
-	$(ASM) -f elf64 -g $(INIT_KERNEL_FILES) -o $(BUILD_DIR)/starter.o
-	$(ASM) -f elf64 -g $(MULTIBOOT_FILE) -o $(BUILD_DIR)/multiboot_header.o
-	$(ASM) -f elf64 -g $(ASM_DIR)/idt.asm -o $(BUILD_DIR)/idt.o
+all: $(ISO_FILE)
 
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/kernel/thread.c -o $(BUILD_DIR)/thread.o
-	$(CC) $(KERNEL_FLAGS_64) $(KERNEL_FILES) -o $(KERNEL_OBJECT)
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/kernel/interrupts.c -o $(BUILD_DIR)/interrupts.o
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/vga/vga_buffer.c -o $(BUILD_DIR)/vga_buffer.elf
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/liballoc.c -o $(BUILD_DIR)/liballoc.o
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/MMU.c -o $(BUILD_DIR)/MMU.o
-	$(CC) $(KERNEL_FLAGS_64) $(SRC_DIR)/mm/page_allocator.c -o $(BUILD_DIR)/page_allocator.o
-	$(CC) $(KERNEL_FLAGS_64) lib/string.c -o $(BUILD_DIR)/string.o
-	
-	ld -m elf_x86_64 -T linker.ld -o $(BUILD_DIR)/square-kernel.elf $(ALL_LINKER_FILES)
+# --- COMPILATION RULES ---
 
-	# Preparando para o GRUB
-	cp $(BUILD_DIR)/square-kernel.elf root_iso/boot/
+# 1. Create ISO image (Depends on Linked Kernel)
+$(ISO_FILE): $(KERNEL_ELF)
+	@echo "[ISO] Generating $(ISO_FILE)..."
+	@mkdir -p $(ISO_DIR)/boot/grub
+	cp $(KERNEL_ELF) $(ISO_DIR)/boot/
+	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
-	grub-mkrescue -o square-kernel.iso root_iso
+# 2. Linking (Depends on ASM and Zig Objects)
+$(KERNEL_ELF): $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN) $(LINKER_SCRIPT)
+	@echo "[LINK] Generating Final Kernel..."
+	ld -m elf_x86_64 -T $(LINKER_SCRIPT) -o $(KERNEL_ELF) $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN)
 
-run: $(OUTFILE)
-	qemu-system-x86_64 -drive format=raw,file=$(OUTFILE)
+# 3. Assembly Compilation (Starter)
+$(OBJ_ASM_START): $(INIT_KERNEL_FILES)
+	@mkdir -p $(BUILD_DIR)
+	@echo "[ASM] Compiling starter.asm..."
+	$(ASM) -f elf64 -g $(INIT_KERNEL_FILES) -o $(OBJ_ASM_START)
 
-debug: $(OUTFILE)
-	qemu-system-x86_64 -drive format=raw,file=$(OUTFILE) -s -S -d int
+# 4. Assembly Compilation (Multiboot)
+$(OBJ_ASM_MULTI): $(MULTIBOOT_FILE)
+	@mkdir -p $(BUILD_DIR)
+	@echo "[ASM] Compiling multiboot_header.asm..."
+	$(ASM) -f elf64 -g $(MULTIBOOT_FILE) -o $(OBJ_ASM_MULTI)
+
+# 5. Zig Compilation (THE MAGIC HAPPENS HERE)
+# This rule says: "If any .zig file changes, recompile main.o"
+$(OBJ_ZIG_MAIN): $(KERNEL_SOURCES)
+	@mkdir -p $(BUILD_DIR)
+	@echo "[ZIG] Compiling sources..."
+	$(ZIG) build-obj $(KERNEL_DIR)/main.zig \
+		-target x86_64-freestanding \
+		-mcpu=x86_64-soft_float \
+		-fno-stack-check \
+		-O ReleaseSafe \
+		-femit-bin=$(OBJ_ZIG_MAIN)
+
+# --- UTILITIES ---
+
+run: $(ISO_FILE)
+	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE)
+
+debug: $(ISO_FILE)
+	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int
+
+# Shows which files Make is seeing (Makefile Debug)
+info:
+	@echo "Zig sources found: $(KERNEL_SOURCES)"
+	@echo "Kernel Directory: $(KERNEL_DIR)"
 
 clean:
 	rm -rf $(BUILD_DIR)/*
-	rm -f $(OUTFILE)
+	rm -f $(ISO_FILE)
+	rm -f $(ISO_DIR)/boot/*.elf
