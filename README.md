@@ -11,21 +11,20 @@ O objetivo é construir um pequeno sistema operacional x86_64 compatível com Mu
 
 ## 📸 Screenshots
 
-> *Estado atual do kernel rodando no QEMU, exibindo o mapa de memória e o PMM inicializado.*
+> *Estado atual do kernel executando no QEMU, exibindo a inicialização do Memory Management Subsystem.*
 
 ![Kernel Screenshot](./docs/print.png)
-
 
 ---
 
 ## 🚀 Status do Projeto
 
-O kernel está na fase de **Gerenciamento de Memória Física**. Estou terminando de migrar a base de código de C para Zig e estabelecer as fundações do sistema.
+O kernel está na fase de **Gerenciamento das Interrupções de Hardware**. A base de código já foi refatorada e escrita em Zig.
 
 ### ✅ Implementado
 - [x] **Bootloader:** Suporte a Multiboot (GRUB) via Assembly (`multiboot_header.asm`).
-- [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`main.zig`).
-- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`vga.zig`).
+- [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`kernel/main.zig`).
+- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`kernel/vga.zig`).
 - [x] **IDT (Interrupt Descriptor Table):** Tratamento básico de interrupções e exceções implementado em Zig.
 - [x] **Multiboot Parsing:** Leitura do mapa de memória fornecido pelo BIOS/GRUB.
 - [x] **PMM (Physical Memory Manager):**
@@ -34,9 +33,10 @@ O kernel está na fase de **Gerenciamento de Memória Física**. Estou terminand
   - Proteção de memória do Kernel e do próprio Bitmap.
 - [x] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
 - [x] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
+- [x] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
 
 ### 🚧 Em Progresso / Próximos Passos
-- [ ] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
+
 - [ ] **Keyboard Driver:** Driver PS/2 básico para entrada de dados.
 
 ---
@@ -54,19 +54,19 @@ Para compilar este projeto, você precisará das seguintes ferramentas instalada
 
 ### Comandos (Makefile)
 
-O projeto utiliza um `Makefile` automatizado para facilitar o fluxo de desenvolvimento:
+O projeto utiliza um `Makefile` para facilitar o fluxo de desenvolvimento:
 
 ```bash
 # Compilar todo o kernel e gerar a ISO
 make all
 
-# Compilar e rodar imediatamente no QEMU
+# Compilar e executar imediatamente no QEMU
 make run
 
 # Limpar arquivos de build (.o, .elf, .iso)
 make clean
 
-# Rodar em modo Debug (aguarda conexão do GDB)
+# Executar em modo Debug (aguarda conexão do GDB)
 make debug
 
 ```
@@ -78,10 +78,11 @@ make debug
 ```text
 /
 ├── kernel/
-│   ├── arch/x86/        # Código específico de arquitetura (Assembly/Boot)
+│   ├── arch/x86/        # Código específico de arquitetura (Assembly/Boot/x86)
 │   ├── mm/              # Gerenciamento de Memória (Heap, VMM, PMM, Bitmap)
-│   ├── cpu.zig          # Tabela de Interrupções
+│   ├── cpu.zig          # Utilitários do processador
 │   ├── idt.zig          # Tabela de Interrupções
+│   ├── gdt.zig          # Tabela de Descrição Global
 │   ├── main.zig         # Ponto de entrada do Kernel
 │   ├── vga.zig          # Driver de Vídeo (Texto)
 │   └── multiboot.zig    # Parsing do cabeçalho Multiboot
