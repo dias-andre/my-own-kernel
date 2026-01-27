@@ -4,7 +4,9 @@ const vmm = @import("mm/vmm.zig");
 
 const PanicWriter = vga.PanicWriter;
 
-const IdtEntry = extern struct {
+const interrupts = @import("interrupts.zig");
+
+const IdtEntry = packed struct {
     offset_low: u16,
     selector: u16,
     ist: u8,
@@ -32,15 +34,11 @@ const IdtPtr = packed struct {
 
 var idt: [256]IdtEntry align(16) = undefined;
 
-const InterruptFrame = extern struct { ip: u64, cs: u64, flags: u64, sp: u64, ss: u64 };
-
 pub fn init() void {
     vga.print("\n[IDT] Creating new IDT entries...\n");
-    idt[0].set(&divideByZeroHandler);
-    idt[8].set(&panicHandler);
-    idt[13].set(&panicHandler);
-    idt[14].set(&pageFaultHandler);
-
+    for(0..256) |i| {
+        idt[i].set(interrupts.isr_stub_table[i]);
+    }
     const idt_ptr = IdtPtr{
         .limit = @sizeOf(@TypeOf(idt)) - 1,
         .base = @intFromPtr(&idt),
@@ -55,13 +53,29 @@ pub fn init() void {
     vga.print("[IDT] Loaded successfully!\n");
 }
 
-pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {
+export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
+    switch (ctx.int_num) {
+        14 => pageFaultHandler(ctx),
+        else => {
+            PanicWriter.cleanError();
+            PanicWriter.print("Unhandled Interrupt: ");
+            PanicWriter.printHex(ctx.int_num);
+            PanicWriter.print("\n");
+            PanicWriter.print("System halted.");
+            while (true) asm volatile("hlt");
+        }
+    }
+}
+
+pub fn pageFaultHandler(ctx: *interrupts.TrapFrame) void {
     const fault_addr = cpu.read_cr2();
     PanicWriter.cleanError();
     
     PanicWriter.print("Faulting Address (CR2): 0x");
     PanicWriter.printHex(fault_addr);
     PanicWriter.print("\n");
+
+    const error_code = ctx.error_code;
 
     if ((error_code & 1) == 0) {
         PanicWriter.print("[Not Present] ");
@@ -83,41 +97,6 @@ pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64
     PanicWriter.print("\n");
 
     PanicWriter.print("System Halted.");
-    while (true) {
-        asm volatile ("hlt");
-    }
-}
-
-
-fn divideByZeroHandler(frame: *InterruptFrame) callconv(.{ .x86_64_interrupt = .{} }) void {
-    _ = frame;
-    PanicWriter.cleanError();
-    PanicWriter.print("[ERROR]: CPU tries divide by zero.\n");
-    PanicWriter.print("CPU halted.\n");
-
-    while (true) {
-        asm volatile ("hlt");
-    }
-}
-
-fn panicHandler(frame: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {
-    vga.PanicWriter.printAt("P", 79, 24);
-    // vga.PanicWriter.cleanError();
-    // vga.PanicWriter.printAt("!!! KERNEL PANIC !!!", 30, 10);
-    // vga.PanicWriter.printAt("Exception: DOUBLE FAULT / ERROR", 25, 12);
-
-    // vga.PanicWriter.printAt("Error Code: ", 28, 11);
-    // vga.PanicWriter.printHexAt(error_code, 42, 11);
-
-    // vga.PanicWriter.printAt("RIP: ", 28, 12);
-    // vga.PanicWriter.printHexAt(frame.ip, 35, 12);
-    PanicWriter.print("!! KERNEL PANIC !!\n");
-    PanicWriter.print("Exception: DOUBLE FAULT / ERROR\n");
-    PanicWriter.print("Error code: 0x");
-    PanicWriter.printHex(error_code);
-    PanicWriter.print("\nRIP: 0x");
-    PanicWriter.printHex(frame.ip);
-
     while (true) {
         asm volatile ("hlt");
     }
