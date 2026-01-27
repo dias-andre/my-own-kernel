@@ -1,5 +1,5 @@
 const vga = @import("vga.zig");
-const idt = @import("arch/x86/idt.zig");
+const idt = @import("idt.zig");
 const mb = @import("multiboot.zig");
 const mm = @import("./mm/index.zig");
 
@@ -23,9 +23,15 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
 
     // starts memory management subsystem
     mm.init(mb_info, kernel_end_addr);
-
     vga.print("\nKernel is alive and paged!\n");
+
     while (true) {
         asm volatile ("hlt");
     }
+}
+
+fn testFaultHandler() void {
+    vga.print("Forcing a crash in 3, 2, 1...\n");
+    const bad_ptr: *u64 = @ptrFromInt(0xB0000000);
+    bad_ptr.* = 0xDEADBEEF;
 }
