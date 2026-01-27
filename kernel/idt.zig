@@ -35,6 +35,7 @@ var idt: [256]IdtEntry align(16) = undefined;
 const InterruptFrame = extern struct { ip: u64, cs: u64, flags: u64, sp: u64, ss: u64 };
 
 pub fn init() void {
+    vga.print("\n[IDT] Creating new IDT entries...\n");
     idt[0].set(&divideByZeroHandler);
     idt[8].set(&panicHandler);
     idt[13].set(&panicHandler);
@@ -45,12 +46,13 @@ pub fn init() void {
         .base = @intFromPtr(&idt),
     };
 
+    vga.print("- Running lidt...\n");
     asm volatile ("lidt (%[ptr])"
         :
         : [ptr] "r" (&idt_ptr),
     );
 
-    vga.print("\nIdt loaded sucessfully!");
+    vga.print("[IDT] Loaded successfully!\n");
 }
 
 pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {
@@ -89,8 +91,9 @@ pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64
 
 fn divideByZeroHandler(frame: *InterruptFrame) callconv(.{ .x86_64_interrupt = .{} }) void {
     _ = frame;
-    const video: [*]volatile u16 = @ptrFromInt(0xb8000);
-    video[0] = 0x4f21;
+    PanicWriter.cleanError();
+    PanicWriter.print("[ERROR]: CPU tries divide by zero.\n");
+    PanicWriter.print("CPU halted.\n");
 
     while (true) {
         asm volatile ("hlt");
@@ -98,8 +101,6 @@ fn divideByZeroHandler(frame: *InterruptFrame) callconv(.{ .x86_64_interrupt = .
 }
 
 fn panicHandler(frame: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {
-    _ = frame;
-    _ = error_code;
     vga.PanicWriter.printAt("P", 79, 24);
     // vga.PanicWriter.cleanError();
     // vga.PanicWriter.printAt("!!! KERNEL PANIC !!!", 30, 10);
@@ -110,6 +111,12 @@ fn panicHandler(frame: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_int
 
     // vga.PanicWriter.printAt("RIP: ", 28, 12);
     // vga.PanicWriter.printHexAt(frame.ip, 35, 12);
+    PanicWriter.print("!! KERNEL PANIC !!\n");
+    PanicWriter.print("Exception: DOUBLE FAULT / ERROR\n");
+    PanicWriter.print("Error code: 0x");
+    PanicWriter.printHex(error_code);
+    PanicWriter.print("\nRIP: 0x");
+    PanicWriter.printHex(frame.ip);
 
     while (true) {
         asm volatile ("hlt");
