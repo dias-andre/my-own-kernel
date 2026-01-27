@@ -35,6 +35,7 @@ var idt: [256]IdtEntry align(16) = undefined;
 const InterruptFrame = extern struct { ip: u64, cs: u64, flags: u64, sp: u64, ss: u64 };
 
 pub fn init() void {
+    vga.print("\n[IDT] Creating new IDT entries...\n");
     idt[0].set(&divideByZeroHandler);
     idt[8].set(&panicHandler);
     idt[13].set(&panicHandler);
@@ -45,12 +46,13 @@ pub fn init() void {
         .base = @intFromPtr(&idt),
     };
 
+    vga.print("- Running lidt...\n");
     asm volatile ("lidt (%[ptr])"
         :
         : [ptr] "r" (&idt_ptr),
     );
 
-    vga.print("\nIdt loaded sucessfully!");
+    vga.print("[IDT] Loaded successfully!\n");
 }
 
 pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {

@@ -65,5 +65,5 @@ pub fn init() void {
         : [ptr] "r" (&gdt_ptr),
         : .{ .memory = true }
     );
-    vga.print("\n[GDT] New GDT loaded successfully!\n");
+    vga.print("[GDT] New GDT loaded successfully!\n");
 }
