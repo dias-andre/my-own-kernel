@@ -128,23 +128,67 @@ fn newLine() void {
 
 pub const PanicWriter = struct {
     const BUFFER: [*] volatile u16 = @ptrFromInt(0xb8000);
-    const xWIDTH = 80;
-    const xHEIGHT = 25;
+    const _WIDTH = 80;
+    const _HEIGHT = 25;
     const ERROR_COLOR: u16 = 0x4f00;
+    var _column: usize = 0;
+    var _row: usize = 0;
+
+    fn _putChar(c: u8) void {
+        if(c == '\n') {
+            _newLine();
+            return;
+        }
+        const index = _row * _WIDTH + _column;
+        BUFFER[index] = ERROR_COLOR | @as(u16, c);
+        _column += 1;
+        if(_column >= _WIDTH) {
+            _newLine();
+        }
+    }
+
+    fn _newLine() void {
+        _column = 0;
+        _row += 1;
+        if(_row >= _HEIGHT) {
+            _row = 0;
+            cleanError();
+        }
+    }
+
+    pub fn print(str: []const u8) void {
+        for(str) |c| {
+            _putChar(c);
+        }
+    }
+
+    pub fn printHex(value: u64) void {
+        const hex = "0123456789ABCDEF";
+        PanicWriter.print("0x");
+        var i: u8 = 16;
+        while (i > 0) {
+            i -= 1;
+            const shift = @as(u6, @intCast(i)) * 4;
+            const nibble = (value >> shift) & 0xF;
+            _putChar(hex[nibble]);
+        }
+    }
 
     pub fn cleanError() void {
+        _column  = 0;
+        _row = 0;
         var i: usize = 0;
         const space: u16 = ' ';
-        while (i < xWIDTH * xHEIGHT) : (i += 1) {
+        while (i < _WIDTH * _HEIGHT) : (i += 1) {
             BUFFER[i] = ERROR_COLOR | space;
         }
     }
 
     pub fn printAt(msg: []const u8, x: usize, y: usize) void {
-        var offset = y * xWIDTH + x;
+        var offset = y * _WIDTH + x;
 
         for (msg) |c| {
-            if (offset >= xWIDTH * xHEIGHT) break;
+            if (offset >= _WIDTH * _HEIGHT) break;
             BUFFER[offset] = ERROR_COLOR | @as(u16, c);
             offset += 1;
         }
