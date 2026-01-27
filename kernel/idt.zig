@@ -1,4 +1,8 @@
-const vga = @import("../../vga.zig");
+const vga = @import("vga.zig");
+const cpu = @import("cpu.zig");
+const vmm = @import("mm/vmm.zig");
+
+const PanicWriter = vga.PanicWriter;
 
 const IdtEntry = extern struct {
     offset_low: u16,
@@ -34,7 +38,7 @@ pub fn init() void {
     idt[0].set(&divideByZeroHandler);
     idt[8].set(&panicHandler);
     idt[13].set(&panicHandler);
-    idt[14].set(&panicHandler);
+    idt[14].set(&pageFaultHandler);
 
     const idt_ptr = IdtPtr{
         .limit = @sizeOf(@TypeOf(idt)) - 1,
@@ -48,6 +52,40 @@ pub fn init() void {
 
     vga.print("\nIdt loaded sucessfully!");
 }
+
+pub fn pageFaultHandler(_: *InterruptFrame, error_code: u64) callconv(.{ .x86_64_interrupt = .{} }) void {
+    const fault_addr = cpu.read_cr2();
+    PanicWriter.cleanError();
+    
+    PanicWriter.print("Faulting Address (CR2): 0x");
+    PanicWriter.printHex(fault_addr);
+    PanicWriter.print("\n");
+
+    if ((error_code & 1) == 0) {
+        PanicWriter.print("[Not Present] ");
+    } else {
+        PanicWriter.print(" [Protection Violation] ");
+    }
+
+    if ((error_code & 2) != 0) {
+        PanicWriter.print(" [Write operation] ");
+    } else {
+        PanicWriter.print(" [Read Operation] ");
+    }
+
+    if ((error_code & 4) != 0) {
+        PanicWriter.print(" [User Mode]");
+    } else {
+        PanicWriter.print(" [Kernel Mode] ");
+    }
+    PanicWriter.print("\n");
+
+    PanicWriter.print("System Halted.");
+    while (true) {
+        asm volatile ("hlt");
+    }
+}
+
 
 fn divideByZeroHandler(frame: *InterruptFrame) callconv(.{ .x86_64_interrupt = .{} }) void {
     _ = frame;

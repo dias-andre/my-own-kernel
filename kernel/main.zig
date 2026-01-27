@@ -1,7 +1,7 @@
 const vga = @import("vga.zig");
-const idt = @import("arch/x86/idt.zig");
+const idt = @import("idt.zig");
 const mb = @import("multiboot.zig");
-const pmm = @import("mm/pmm.zig");
+const mm = @import("./mm/index.zig");
 
 extern var _start: u8;
 extern var _end: u8;
@@ -17,12 +17,21 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     const mb_info = mb.init(pointer, magic);
 
     const kernel_end_addr = @intFromPtr(&_end);
-    vga.print("Kernel ends at: 0x");
-    vga.printHex(kernel_end_addr);
-    vga.print("\n");
+    // vga.print("Kernel ends at: 0x");
+    // vga.printHex(kernel_end_addr);
+    // vga.print("\n");
 
-    pmm.init(mb_info, kernel_end_addr);
+    // starts memory management subsystem
+    mm.init(mb_info, kernel_end_addr);
+    vga.print("\nKernel is alive and paged!\n");
+
     while (true) {
         asm volatile ("hlt");
     }
+}
+
+fn testFaultHandler() void {
+    vga.print("Forcing a crash in 3, 2, 1...\n");
+    const bad_ptr: *u64 = @ptrFromInt(0xB0000000);
+    bad_ptr.* = 0xDEADBEEF;
 }
