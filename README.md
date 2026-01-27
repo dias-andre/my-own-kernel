@@ -32,16 +32,16 @@ O kernel está na fase de **Gerenciamento de Memória Física**. Estou terminand
   - Alocador de páginas físicas (4KB).
   - Uso de **Bitmap** para rastrear memória livre/ocupada.
   - Proteção de memória do Kernel e do próprio Bitmap.
+- [x] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
+- [x] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
 
 ### 🚧 Em Progresso / Próximos Passos
-- [ ] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
-- [ ] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
 - [ ] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
 - [ ] **Keyboard Driver:** Driver PS/2 básico para entrada de dados.
 
 ---
 
-## 🛠️ Como Compilar e Rodar
+## 🛠️ Como Compilar e Executar
 
 ### Dependências
 Para compilar este projeto, você precisará das seguintes ferramentas instaladas no seu Linux (Manjaro/Arch ou similar):
@@ -79,7 +79,9 @@ make debug
 /
 ├── kernel/
 │   ├── arch/x86/        # Código específico de arquitetura (Assembly/Boot)
-│   ├── mm/              # Gerenciamento de Memória (PMM, Bitmap)
+│   ├── mm/              # Gerenciamento de Memória (Heap, VMM, PMM, Bitmap)
+│   ├── cpu.zig          # Tabela de Interrupções
+│   ├── idt.zig          # Tabela de Interrupções
 │   ├── main.zig         # Ponto de entrada do Kernel
 │   ├── vga.zig          # Driver de Vídeo (Texto)
 │   └── multiboot.zig    # Parsing do cabeçalho Multiboot
