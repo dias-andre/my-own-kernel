@@ -3,6 +3,7 @@ const idt = @import("idt.zig");
 const mb = @import("multiboot.zig");
 const mm = @import("./mm/index.zig");
 const gdt = @import("gdt.zig");
+const pic = @import("hardware/pic.zig");
 
 extern var _start: u8;
 extern var _end: u8;
@@ -21,6 +22,7 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     mm.init(mb_info, kernel_end_addr);
     gdt.init();
     idt.init();
+    pic.remap();
     while (true) {
         asm volatile ("hlt");
     }
