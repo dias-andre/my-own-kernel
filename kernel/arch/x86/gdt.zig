@@ -1,4 +1,6 @@
 const vga = @import("../../vga.zig");
+const tss_mod = @import("tss.zig");
+
 const GdtEntry = packed struct(u64) {
     limit_low: u16 = 0, // bits 0-15
     base_low: u24 = 0, // bits 16-39
@@ -41,9 +43,37 @@ var gdt_entries = [_]GdtEntry{
     },
 
     // TODO: User Code, User Data, TSS
+
+    // User Data
+    .{
+        .present = true,
+        .descriptor_type = true,
+        .executable = false,
+        .rw = true,
+        .long_mode = false,
+        .dpl = 3
+    },
+
+    // User Code,
+    .{
+        .present = true,
+        .descriptor_type = true,
+        .executable = true,
+        .rw = true,
+        .long_mode = true,
+        .dpl = 3
+    },
+
+    .{},
+
+    .{}
 };
 
 pub fn init() void {
+    const tss_base = @intFromPtr(&tss_mod.tss);
+    const tss_limit = @sizeOf(tss_mod.TaskStateSegment);
+
+    setTssEntry(5, tss_base, tss_limit);
     vga.print("\n[GDT] Loading new GDT...\n");
     const gdt_ptr = GdtDescriptor{ .limit = @sizeOf(@TypeOf(gdt_entries)) - 1, .base = @intFromPtr(&gdt_entries) };
     vga.print("- Running lgdt...\n");
@@ -66,4 +96,31 @@ pub fn init() void {
         : .{ .memory = true }
     );
     vga.print("[GDT] New GDT loaded successfully!\n");
+    vga.print("[TSS] Loading Task State Segment...\n");
+    asm volatile(
+        \\ ltr %ax
+        :
+        : [selector] "{ax}" (@as(u16, 0x28))
+    );
+    vga.print("[TSS] Loaded Successfully!\n");
+}
+
+fn setTssEntry(index: usize, base: u64, limit: u64) void {
+    gdt_entries[index] = .{
+        .limit_low = @truncate(limit),
+        .base_low = @truncate(base),
+        .base_high = @truncate(base >> 24),
+        .present = true,
+        .dpl = 0,
+        .descriptor_type = false,
+        .executable = true,
+        .accessed = true,
+        .rw = false,
+        .limit_high = @truncate(limit >> 16),
+        .granularity = false,
+    };
+
+    const high_part = @as(u64, base >> 32);
+    const ptr_entry: *u64 = @ptrCast(&gdt_entries[index + 1]);
+    ptr_entry.* = high_part;
 }
