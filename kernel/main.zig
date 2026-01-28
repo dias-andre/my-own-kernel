@@ -1,9 +1,9 @@
 const vga = @import("vga.zig");
-const idt = @import("idt.zig");
 const mb = @import("multiboot.zig");
-const mm = @import("./mm/index.zig");
-const gdt = @import("gdt.zig");
-const pic = @import("hardware/pic.zig");
+const mm = @import("mm/index.zig");
+const gdt = @import("arch/x86/gdt.zig");
+const idt = @import("arch/x86/idt.zig");
+const pic = @import("arch/x86/pic.zig");
 
 extern var _start: u8;
 extern var _end: u8;
@@ -13,7 +13,7 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     vga.clear();
     vga.print("The execution reached the kernel entry.\n");
     vga.setDefaultColor();
-    
+
     // get multiboot info
     const mb_info = mb.init(pointer, magic);
     const kernel_end_addr = @intFromPtr(&_end);
@@ -23,6 +23,8 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     gdt.init();
     idt.init();
     pic.remap();
+    vga.print("sti.");
+    asm volatile ("sti");
     while (true) {
         asm volatile ("hlt");
     }
@@ -33,3 +35,4 @@ fn testFaultHandler() void {
     const bad_ptr: *u64 = @ptrFromInt(0xB0000000);
     bad_ptr.* = 0xDEADBEEF;
 }
+

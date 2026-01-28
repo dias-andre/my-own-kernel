@@ -127,7 +127,7 @@ fn newLine() void {
 }
 
 pub const PanicWriter = struct {
-    const BUFFER: [*] volatile u16 = @ptrFromInt(0xb8000);
+    const BUFFER: [*]volatile u16 = @ptrFromInt(0xb8000);
     const _WIDTH = 80;
     const _HEIGHT = 25;
     const ERROR_COLOR: u16 = 0x4f00;
@@ -135,14 +135,14 @@ pub const PanicWriter = struct {
     var _row: usize = 0;
 
     fn _putChar(c: u8) void {
-        if(c == '\n') {
+        if (c == '\n') {
             _newLine();
             return;
         }
         const index = _row * _WIDTH + _column;
         BUFFER[index] = ERROR_COLOR | @as(u16, c);
         _column += 1;
-        if(_column >= _WIDTH) {
+        if (_column >= _WIDTH) {
             _newLine();
         }
     }
@@ -150,14 +150,14 @@ pub const PanicWriter = struct {
     fn _newLine() void {
         _column = 0;
         _row += 1;
-        if(_row >= _HEIGHT) {
+        if (_row >= _HEIGHT) {
             _row = 0;
             cleanError();
         }
     }
 
     pub fn print(str: []const u8) void {
-        for(str) |c| {
+        for (str) |c| {
             _putChar(c);
         }
     }
@@ -174,8 +174,31 @@ pub const PanicWriter = struct {
         }
     }
 
+    pub fn printDec(value: usize) void {
+        if (value == 0) {
+            _putChar('0');
+            return;
+        }
+
+        var v = value;
+        var buffer: [20]u8 = undefined;
+        var index: usize = 0;
+
+        while (v > 0) {
+            const digit = v % 10; // Pega o último dígito
+            buffer[index] = '0' + @as(u8, @intCast(digit)); // Converte para char ASCII
+            index += 1;
+            v = v / 10;
+        }
+
+        while (index > 0) {
+            index -= 1;
+            _putChar(buffer[index]);
+        }
+    }
+
     pub fn cleanError() void {
-        _column  = 0;
+        _column = 0;
         _row = 0;
         var i: usize = 0;
         const space: u16 = ' ';
@@ -198,8 +221,10 @@ pub const PanicWriter = struct {
         var offset = y * WIDTH + x;
         const hex = "0123456789ABCDEF";
 
-        BUFFER[offset] = ERROR_COLOR | '0'; offset += 1;
-        BUFFER[offset] = ERROR_COLOR | 'x'; offset += 1;
+        BUFFER[offset] = ERROR_COLOR | '0';
+        offset += 1;
+        BUFFER[offset] = ERROR_COLOR | 'x';
+        offset += 1;
 
         var i: u8 = 16;
         while (i > 0) {

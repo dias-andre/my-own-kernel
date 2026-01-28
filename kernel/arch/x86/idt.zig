@@ -1,6 +1,8 @@
-const vga = @import("vga.zig");
+const vga = @import("../../vga.zig");
+const vmm = @import("../../mm/vmm.zig");
+
 const cpu = @import("cpu.zig");
-const vmm = @import("mm/vmm.zig");
+const pic = @import("pic.zig");
 
 const PanicWriter = vga.PanicWriter;
 
@@ -36,7 +38,7 @@ var idt: [256]IdtEntry align(16) = undefined;
 
 pub fn init() void {
     vga.print("\n[IDT] Creating new IDT entries...\n");
-    for(0..256) |i| {
+    for (0..256) |i| {
         idt[i].set(interrupts.isr_stub_table[i]);
     }
     const idt_ptr = IdtPtr{
@@ -59,18 +61,18 @@ export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
         else => {
             PanicWriter.cleanError();
             PanicWriter.print("Unhandled Interrupt: ");
-            PanicWriter.printHex(ctx.int_num);
+            PanicWriter.printDec(ctx.int_num);
             PanicWriter.print("\n");
             PanicWriter.print("System halted.");
-            while (true) asm volatile("hlt");
-        }
+            while (true) asm volatile ("hlt");
+        },
     }
 }
 
 pub fn pageFaultHandler(ctx: *interrupts.TrapFrame) void {
     const fault_addr = cpu.read_cr2();
     PanicWriter.cleanError();
-    
+
     PanicWriter.print("Faulting Address (CR2): 0x");
     PanicWriter.printHex(fault_addr);
     PanicWriter.print("\n");

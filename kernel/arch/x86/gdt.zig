@@ -1,4 +1,4 @@
-const vga = @import("vga.zig");
+const vga = @import("../../vga.zig");
 const GdtEntry = packed struct(u64) {
     limit_low: u16 = 0, // bits 0-15
     base_low: u24 = 0, // bits 16-39
