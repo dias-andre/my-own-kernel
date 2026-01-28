@@ -2,20 +2,17 @@ const vga = @import("../vga.zig");
 const vmm = @import("vmm.zig");
 const pmm = @import("pmm.zig");
 
-pub const HEAP_START: usize = 0x02000000;
-pub const HEAP_INITIAL_SIZE: usize = 1024 * 1024;
-
 pub const BlockHeader = packed struct { size: usize, next: ?*BlockHeader, free: bool, magic: u32 };
 
-pub const KernelHeap = struct {
+pub const Heap = struct {
     head: *BlockHeader,
+    pml4_phys: u64,
+    end_addr: usize,
 
-    pub fn init() KernelHeap {
-        vga.print("\n[HEAP] Initializing Kernel Heap...\n");
-
-        var current_virt = HEAP_START;
-        const end_virt = HEAP_START + HEAP_INITIAL_SIZE;
-        const pml4 = vmm.kernel_pml4;
+    pub fn init(start: usize, initial_size: usize, pml4_phys: u64, vmmFlags: usize) Heap {
+        var current_virt = start;
+        const end_virt = start + initial_size;
+        const pml4: *vmm.PageTable = @ptrFromInt(pml4_phys);
 
         while (current_virt < end_virt) : (current_virt += 4096) {
             const phys = pmm.allocate_page() orelse {
@@ -24,24 +21,23 @@ pub const KernelHeap = struct {
                 unreachable;
             };
 
-            vmm.map_page(pml4, current_virt, phys, vmm.PAGE_PRESENT | vmm.PAGE_RW);
+            vmm.map_page(pml4, current_virt, phys, vmmFlags);
         }
 
-        const first_block: *BlockHeader = @ptrFromInt(HEAP_START);
-        first_block.size = HEAP_INITIAL_SIZE - @sizeOf(BlockHeader);
+        const first_block: *BlockHeader = @ptrFromInt(start);
+        first_block.size = initial_size - @sizeOf(BlockHeader);
         first_block.next = null;
         first_block.free = true;
         first_block.magic = 0xc0ffee;
-        vga.print("[HEAP] Created at 0x");
-        vga.printHex(HEAP_START);
-        vga.print(" (Size: 1MB)\n");
 
-        return KernelHeap{
+        return Heap{
             .head = first_block,
+            .pml4_phys = pml4_phys,
+            .end_addr = end_virt
         };
     }
 
-    pub fn alloc(self: *KernelHeap, size: usize) ?[*]u8 {
+    pub fn alloc(self: *Heap, size: usize) ?[*]u8 {
         const aligned_size = (size + 7) & ~@as(usize, 7);
         var current = self.head;
 
@@ -56,7 +52,7 @@ pub const KernelHeap = struct {
             if (current.free and current.size >= aligned_size) {
                 const space_needed_for_split = aligned_size + @sizeOf(BlockHeader) + 8;
                 if (current.size >= space_needed_for_split) {
-                    const new_block_addr = @intFromPtr(current) + @sizeOf(BlockHeader);
+                    const new_block_addr = @intFromPtr(current) + @sizeOf(BlockHeader) + aligned_size;
                     const new_block: *BlockHeader = @ptrFromInt(new_block_addr);
 
                     new_block.size = current.size - aligned_size - @sizeOf(BlockHeader);
@@ -79,24 +75,28 @@ pub const KernelHeap = struct {
         }
     }
 
-    pub fn free(_: *KernelHeap, ptr: [*]u8) void {
+    pub fn free(_: *Heap, ptr: [*]u8) void {
         const addr = @intFromPtr(ptr);
         const header_addr = addr - @sizeOf(BlockHeader);
         const block: *BlockHeader = @ptrFromInt(header_addr);
 
         if (block.magic != 0xc0ffee) {
             vga.printError("HEAP CORRUPTION: Invalid pointer passed to free!");
-            while(true) asm volatile("hlt");
+            while (true) asm volatile ("hlt");
         }
 
-        if(block.free) {
-            vga.printError("DOUBLE FREE DETECTED: Block alrady freed!");
-            while(true) asm volatile("hlt");
+        if (block.free) {
+            vga.printError("DOUBLE FREE DETECTED: Block already freed!");
+            while (true) asm volatile ("hlt");
         }
-        if(block.next) |next_block| {
-            block.size += next_block.size + @sizeOf(BlockHeader);
-            block.next = next_block.next;
+
+        if (block.next) |next_block| {
+            if (next_block.free) {
+                block.size += next_block.size + @sizeOf(BlockHeader);
+                block.next = next_block.next;
+            }
         }
+
         block.free = true;
     }
 };
