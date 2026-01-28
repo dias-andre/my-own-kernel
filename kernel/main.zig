@@ -4,6 +4,8 @@ const mm = @import("mm/index.zig");
 const gdt = @import("arch/x86/gdt.zig");
 const idt = @import("arch/x86/idt.zig");
 const pic = @import("arch/x86/pic.zig");
+const cpu = @import("arch/x86/cpu.zig");
+const pit = @import("drivers/pit.zig");
 
 extern var _start: u8;
 extern var _end: u8;
@@ -23,11 +25,9 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     gdt.init();
     idt.init();
     pic.remap();
-    vga.print("sti.");
-    asm volatile ("sti");
-    while (true) {
-        asm volatile ("hlt");
-    }
+    pit.init(100);
+    cpu.sti();
+    while (true) cpu.halt();
 }
 
 fn testFaultHandler() void {

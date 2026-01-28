@@ -4,6 +4,9 @@ const vmm = @import("../../mm/vmm.zig");
 const cpu = @import("cpu.zig");
 const pic = @import("pic.zig");
 
+const pit = @import("../../drivers/pit.zig");
+const kbd = @import("../../drivers/keyboard.zig");
+
 const PanicWriter = vga.PanicWriter;
 
 const interrupts = @import("interrupts.zig");
@@ -58,6 +61,14 @@ pub fn init() void {
 export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
     switch (ctx.int_num) {
         14 => pageFaultHandler(ctx),
+        32 => {
+            pit.handle_irq();
+            pic.sendEOI(0);
+        },
+        33 => {
+          kbd.handle_irq();
+          pic.sendEOI(1);
+        },
         else => {
             PanicWriter.cleanError();
             PanicWriter.print("Unhandled Interrupt: ");
