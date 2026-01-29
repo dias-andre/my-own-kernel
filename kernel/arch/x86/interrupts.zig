@@ -54,7 +54,6 @@ comptime {
         \\  cld
         \\  mov rdi, rsp
         \\  call isr_handler_zig
-        \\  mov rsp, rax
         \\
         \\  pop rax
         \\  pop rbx

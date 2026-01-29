@@ -60,35 +60,35 @@ pub fn init() void {
     vga.print("[IDT] Loaded successfully!\n");
 }
 
-export fn isr_handler_zig(ctx: *interrupts.TrapFrame) u64 {
+export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
     switch (ctx.int_num) {
         14 => {
             pageFaultHandler(ctx);
-            return @intFromPtr(ctx);
         },
         32 => {
             pic.sendEOI(0);
             pit.handle_irq();
-            
-            return scheduler.schedule(@intFromPtr(ctx));
         },
         33 => {
           kbd.handle_irq();
           pic.sendEOI(1);
-          return @intFromPtr(ctx);
         },
         else => {
-            PanicWriter.cleanError();
-            PanicWriter.print("Unhandled Interrupt: ");
+            // PanicWriter.cleanError();
+            // PanicWriter.print("Unhandled Interrupt: ");
+            // PanicWriter.printDec(ctx.int_num);
+            // PanicWriter.print("\n");
+            // PanicWriter.print("Error code: ");
+            // PanicWriter.printHex(ctx.error_code);
+            // PanicWriter.print("\nRIP: ");
+            // PanicWriter.printHex(ctx.rip);
+            // PanicWriter.print("\nSystem halted.");
             PanicWriter.printDec(ctx.int_num);
-            PanicWriter.print("\n");
-            PanicWriter.print("Error code (dec): ");
-            PanicWriter.printDec(ctx.error_code);
-            PanicWriter.print("\nRIP (dec): ");
-            PanicWriter.printDec(ctx.rip);
-            PanicWriter.print("\nSystem halted.");
+            PanicWriter.printAt("Code: ", 0, 23);
+            PanicWriter.printHexAt(ctx.error_code, 6, 23);
+            PanicWriter.printAt("RIP: ", 0, 24);
+            PanicWriter.printHexAt(ctx.error_code, 6, 24);
             while (true) asm volatile ("hlt");
-            return @intFromPtr(ctx);
         },
     }
 }
