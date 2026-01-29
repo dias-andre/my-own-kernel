@@ -7,6 +7,8 @@ const pic = @import("pic.zig");
 const pit = @import("../../drivers/pit.zig");
 const kbd = @import("../../drivers/keyboard.zig");
 
+const scheduler = @import("../../scheduler/index.zig");
+
 const PanicWriter = vga.PanicWriter;
 
 const interrupts = @import("interrupts.zig");
@@ -58,24 +60,35 @@ pub fn init() void {
     vga.print("[IDT] Loaded successfully!\n");
 }
 
-export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
+export fn isr_handler_zig(ctx: *interrupts.TrapFrame) u64 {
     switch (ctx.int_num) {
-        14 => pageFaultHandler(ctx),
+        14 => {
+            pageFaultHandler(ctx);
+            return @intFromPtr(ctx);
+        },
         32 => {
-            pit.handle_irq();
             pic.sendEOI(0);
+            pit.handle_irq();
+            
+            return scheduler.schedule(@intFromPtr(ctx));
         },
         33 => {
           kbd.handle_irq();
           pic.sendEOI(1);
+          return @intFromPtr(ctx);
         },
         else => {
             PanicWriter.cleanError();
             PanicWriter.print("Unhandled Interrupt: ");
             PanicWriter.printDec(ctx.int_num);
             PanicWriter.print("\n");
-            PanicWriter.print("System halted.");
+            PanicWriter.print("Error code (dec): ");
+            PanicWriter.printDec(ctx.error_code);
+            PanicWriter.print("\nRIP (dec): ");
+            PanicWriter.printDec(ctx.rip);
+            PanicWriter.print("\nSystem halted.");
             while (true) asm volatile ("hlt");
+            return @intFromPtr(ctx);
         },
     }
 }
