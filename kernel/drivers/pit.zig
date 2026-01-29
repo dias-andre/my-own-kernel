@@ -22,7 +22,7 @@ pub fn init(freq: u32) void {
 
 pub fn handle_irq() void {
   ticks += 1;
-  vga.print(".");
+  //vga.print(".");
   // pic.sendEOI(0);
 }
 
