@@ -7,8 +7,6 @@ const pic = @import("pic.zig");
 const pit = @import("../../drivers/pit.zig");
 const kbd = @import("../../drivers/keyboard.zig");
 
-const scheduler = @import("../../scheduler/index.zig");
-
 const PanicWriter = vga.PanicWriter;
 
 const interrupts = @import("interrupts.zig");
