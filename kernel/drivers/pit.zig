@@ -1,6 +1,7 @@
 const cpu = @import("../arch/x86/cpu.zig");
 const pic = @import("../arch/x86/pic.zig");
 const log = @import("../utils/klog.zig").Logger;
+const sch = @import("../sch/index.zig");
 
 const BASE_FREQUENCY = 1193180;
 const COMMAND_PORT = 0x43;
@@ -24,6 +25,7 @@ pub fn handle_irq() void {
   ticks += 1;
   //vga.print(".");
   // pic.sendEOI(0);
+  sch.schedule();
 }
 
 pub fn get_ticks() u64 {

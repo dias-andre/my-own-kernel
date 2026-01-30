@@ -7,12 +7,27 @@ const pic = @import("arch/x86/pic.zig");
 const cpu = @import("arch/x86/cpu.zig");
 const pit = @import("drivers/pit.zig");
 const stubs = @import("utils/libc_stubs.zig");
+const scheduler = @import("sch/index.zig");
 
 const vmm = @import("mm/vmm.zig");
 const log = @import("utils/klog.zig").Logger;
 
 extern var _start: u8;
 extern var _end: u8;
+
+fn thread_b() void {
+    asm volatile("sti");
+    while(true) {
+        klog.Logger.failed("b", .{});
+    }
+}
+
+fn thread_a() void {
+    asm volatile("sti");
+    while(true) {
+        klog.Logger.ok("a", .{});
+    }
+}
 
 export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     _ = stubs;
@@ -31,6 +46,10 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     pic.remap();
     pit.init(100);
     cpu.sti();
+    scheduler.init();
+    klog.screen.clear();
+    scheduler.create_thread(@intFromPtr(&thread_a));
+    scheduler.create_thread(@intFromPtr(&thread_b));
 
     while (true) cpu.halt();
 }
