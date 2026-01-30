@@ -7,7 +7,7 @@ const pic = @import("arch/x86/pic.zig");
 const cpu = @import("arch/x86/cpu.zig");
 const pit = @import("drivers/pit.zig");
 const stubs = @import("utils/libc_stubs.zig");
-const scheduler = @import("sch/index.zig");
+const proc = @import("proc/manager.zig");
 
 const vmm = @import("mm/vmm.zig");
 const log = @import("utils/klog.zig").Logger;
@@ -16,16 +16,14 @@ extern var _start: u8;
 extern var _end: u8;
 
 fn thread_b() void {
-    // asm volatile("sti");
     while(true) {
-        klog.Logger.failed("b", .{});
+        log.info("B", .{});
     }
 }
 
 fn thread_a() void {
-    // asm volatile("sti");
     while(true) {
-        klog.Logger.ok("a", .{});
+        log.ok("A", .{});
     }
 }
 
@@ -42,15 +40,20 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     idt.init();
 
     map_video_address();
-
+    proc.init();
     pic.remap();
     pit.init(100);
-    cpu.sti();
-    scheduler.init();
-    klog.screen.clear();
-    scheduler.create_thread(@intFromPtr(&thread_a));
-    scheduler.create_thread(@intFromPtr(&thread_b));
 
+    cpu.sti();
+    log.info("Interrupts enabled! ", .{});
+    proc.start_thread(null, @intFromPtr(&thread_a)) catch {
+        log.failed("Error to start thread_a", .{});
+        while(true) asm volatile("hlt");
+    };
+    proc.start_thread(null, @intFromPtr(&thread_b)) catch {
+        log.failed("Error to start thread_b", .{});
+        while(true) asm volatile("hlt");
+    };
     while (true) cpu.halt();
 }
 
