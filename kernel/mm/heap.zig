@@ -61,7 +61,8 @@ pub const Heap = struct {
                 const data_start = @intFromPtr(current) + @sizeOf(BlockHeader);
                 const aligned_data = alignUp(data_start, alignment);
                 const padding = aligned_data - data_start;
-                const total_size = padding + size;
+                const total_requested = padding + size;
+                const total_size = alignUp(total_requested, 16);
 
                 if (current.size >= total_size) {
                     const space_needed_for_split = total_size + HEADER_SIZE + 16;
