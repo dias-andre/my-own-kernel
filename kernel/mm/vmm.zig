@@ -1,6 +1,5 @@
 const pmm = @import("./pmm.zig");
-const vga = @import("../vga.zig");
-
+const log = @import("../utils/klog.zig").Logger;
 // ==========================================
 // CONSTANTES DE PAGINAÇÃO (FLAGS)
 // ==========================================
@@ -48,39 +47,41 @@ fn get_pt_index(virt_addr: usize) usize {
 }
 
 pub fn init() void {
-    vga.print("\n[VMM] Initializing Virtual Memory Manager...\n");
+    log.info("(VMM) Initializing Virtual Memory Manager.", .{});
 
-    const pml4_phys = pmm.allocate_page() orelse {
-        vga.printError("CRITICAL: Failed to allocate kernel PML4!\n");
-        while (true) {
-            asm volatile ("hlt");
+    const pml4_phys = pmm.allocate_page() catch |err| {
+        switch (err) {
+            error.NoPhysicalPages => {
+                log.failed("No physical pages during VMM initialization!", .{});
+            },
         }
-        unreachable;
+        while (true) asm volatile ("hlt");
     };
 
     kernel_pml4 = @ptrFromInt(pml4_phys);
     kernel_pml4.clear();
 
-    vga.print("- Kernel PML4 allocated at: 0x");
-    vga.printHex(pml4_phys);
-    vga.print("\n");
+    log.println("- Kernel PML4 allocated at: {}", .{kernel_pml4});
 
     // TODO: identity mapping
     var current_addr: usize = 0;
     const max_addr: usize = 0x1000000;
-    
+
     while (current_addr < max_addr) : (current_addr += 4096) {
-      const flags = PAGE_PRESENT | PAGE_RW;
-      map_page(kernel_pml4, current_addr, current_addr, flags);
+        const flags = PAGE_PRESENT | PAGE_RW;
+        map_page(kernel_pml4, current_addr, current_addr, flags) catch {
+            log.failed("Failed to allocate physical page during VMM initialization", .{});
+            while(true) asm volatile("hlt");
+        };
     }
-    vga.print("- Identity mapped first 16MB\n");
-    vga.print("- Loading CR3...\n");
+    log.println("- Identity mapped first 16MB", .{});
+    log.println("- Loading CR3...", .{});
 
     load_pml4(kernel_pml4);
-    vga.print("[VMM] Paging enabled successfully!\n");
+    log.ok("(VMM) Paging enabled successfully!", .{});
 }
 
-pub fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usize) void {
+pub fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usize) !void {
     const idx_pml4 = get_pml4_index(virt_addr);
     const idx_pdpt = get_pdpt_index(virt_addr);
     const idx_pd = get_pd_index(virt_addr);
@@ -96,40 +97,22 @@ pub fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usi
     // TODO: implement page walk
 
     // level 3 -> 4
-    const pdpt = get_next_table(&pml4.entries[idx_pml4]) orelse {
-        vga.printError("CRITICAL: OOM while creating PDPT");
-        while (true) {
-            asm volatile ("hlt");
-        }
-        unreachable;
-    };
+    const pdpt = try get_next_table(&pml4.entries[idx_pml4]);
 
     // level 3 -> 2
-    const pd = get_next_table(&pdpt.entries[idx_pdpt]) orelse {
-        vga.printError("CRITIAL: OOM while creating PD");
-        while (true) {
-            asm volatile ("hlt");
-        }
-        unreachable;
-    };
+    const pd = try get_next_table(&pdpt.entries[idx_pdpt]);
 
     // level 2 -> 1
-    const pt = get_next_table(&pd.entries[idx_pd]) orelse {
-        vga.printError("CRITICAL: OOM while creating PT");
-        while (true) {
-            asm volatile ("hlt");
-        }
-        unreachable;
-    };
+    const pt = try get_next_table(&pd.entries[idx_pd]);
 
     pt.entries[idx_pt] = (phys_addr & PAGE_ADDR_MASK) | flags;
 }
 
-fn get_next_table(entry: *u64) ?*PageTable {
+fn get_next_table(entry: *u64) !*PageTable {
     const addr = entry.*;
 
     if ((addr & PAGE_PRESENT) == 0) {
-        const new_table_phys = pmm.allocate_page() orelse return null;
+        const new_table_phys = try pmm.allocate_page();
         const new_table_ptr: *PageTable = @ptrFromInt(new_table_phys);
         new_table_ptr.clear();
 
@@ -145,7 +128,6 @@ pub fn load_pml4(pml4: *PageTable) void {
     const addr = @intFromPtr(pml4);
     asm volatile ("mov %[addr], %%cr3"
         :
-        : [addr] "r" (addr)
-        : .{ .memory = true }
-    );
+        : [addr] "r" (addr),
+        : .{ .memory = true });
 }

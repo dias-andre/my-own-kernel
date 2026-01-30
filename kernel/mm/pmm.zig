@@ -1,5 +1,5 @@
 const mb = @import("../multiboot.zig");
-const vga = @import("../vga.zig");
+const log = @import("../utils/klog.zig").Logger;
 
 pub const PAGE_SIZE: usize = 4096;
 
@@ -28,7 +28,7 @@ fn align_up(addr: usize) usize {
 }
 
 pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) void {
-    vga.print("\n[PMM] Initializing physical memory manager...\n");
+    log.info("(PMM) Initializing physical memory manager...", .{});
 
     max_phys_addr = calculateTotalMemory(mb_info);
     total_pages = max_phys_addr / PAGE_SIZE;
@@ -39,15 +39,8 @@ pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) void {
     bitmap = @ptrFromInt(bitmap_phys_addr);
 
     // DEBUG INFO
-    vga.print(" - Total RAM: ");
-    vga.printDec(max_phys_addr / 1024 / 1024);
-    vga.print("mb \n");
-    vga.print(" - Bitmap Addr: 0x");
-    vga.printHex(bitmap_phys_addr);
-    vga.print("\n");
-    vga.print(" - Bitmap Size: ");
-    vga.printDec(bitmap_size);
-    vga.print(" bytes\n");
+    log.println("- Total RAM: {}mb", .{max_phys_addr / 1024 / 1024});
+    log.println("- Bitmap size: {} bytes", .{bitmap_size});
 
     // Security: mark all as used (memset 0xFF)
     fill_memory(bitmap, 0xff, bitmap_size);
@@ -75,7 +68,7 @@ pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) void {
     const final_reserved_addr = bitmap_phys_addr + bitmap_size;
     deinit_region(0, final_reserved_addr);
 
-    vga.print("[PMM] Done. System ready.\n");
+    log.ok("(PMM) Done! ", .{});
 }
 
 fn init_region(base: u64, length: u64) void {
@@ -128,7 +121,7 @@ fn fill_memory(ptr: [*]u8, value: u8, len: usize) void {
     }
 }
 
-pub fn allocate_page() ?usize {
+pub fn allocate_page() !usize {
     var i: usize = 0;
     while (i < total_pages) : (i += 1) {
         if (!test_bit(i)) {
@@ -136,7 +129,7 @@ pub fn allocate_page() ?usize {
             return i * PAGE_SIZE;
         }
     }
-    return null;
+    return error.NoPhysicalPages;
 }
 
 pub fn free_page(addr: usize) void {
@@ -144,13 +137,4 @@ pub fn free_page(addr: usize) void {
     if (page_idx < total_pages) {
         clear_bit(page_idx);
     }
-}
-
-export fn memset(dest: [*]u8, val: i32, len: usize) [*]u8 {
-    var i: usize = 0;
-    const v: u8 = @intCast(val); 
-    while (i < len) : (i += 1) {
-        dest[i] = v;
-    }
-    return dest;
 }

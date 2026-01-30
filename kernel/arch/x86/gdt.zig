@@ -1,4 +1,6 @@
-const vga = @import("vga.zig");
+const tss_mod = @import("tss.zig");
+const log = @import("../../utils/klog.zig").Logger;
+
 const GdtEntry = packed struct(u64) {
     limit_low: u16 = 0, // bits 0-15
     base_low: u24 = 0, // bits 16-39
@@ -41,12 +43,39 @@ var gdt_entries = [_]GdtEntry{
     },
 
     // TODO: User Code, User Data, TSS
+
+    // User Data
+    .{
+        .present = true,
+        .descriptor_type = true,
+        .executable = false,
+        .rw = true,
+        .long_mode = false,
+        .dpl = 3
+    },
+
+    // User Code,
+    .{
+        .present = true,
+        .descriptor_type = true,
+        .executable = true,
+        .rw = true,
+        .long_mode = true,
+        .dpl = 3
+    },
+
+    .{},
+
+    .{}
 };
 
 pub fn init() void {
-    vga.print("\n[GDT] Loading new GDT...\n");
+    log.info("[GDT] Loading new GDT.", .{});
+    const tss_base = @intFromPtr(&tss_mod.tss);
+    const tss_limit = @sizeOf(tss_mod.TaskStateSegment);
+
+    setTssEntry(5, tss_base, tss_limit);
     const gdt_ptr = GdtDescriptor{ .limit = @sizeOf(@TypeOf(gdt_entries)) - 1, .base = @intFromPtr(&gdt_entries) };
-    vga.print("- Running lgdt...\n");
     asm volatile (
         \\lgdt (%[ptr])
         // reload segment registers
@@ -65,5 +94,30 @@ pub fn init() void {
         : [ptr] "r" (&gdt_ptr),
         : .{ .memory = true }
     );
-    vga.print("[GDT] New GDT loaded successfully!\n");
+    asm volatile(
+        \\ ltr %ax
+        :
+        : [selector] "{ax}" (@as(u16, 0x28))
+    );
+    log.ok("[GDT] New GDT loaded successfully!", .{});
+}
+
+fn setTssEntry(index: usize, base: u64, limit: u64) void {
+    gdt_entries[index] = .{
+        .limit_low = @truncate(limit),
+        .base_low = @truncate(base),
+        .base_high = @truncate(base >> 24),
+        .present = true,
+        .dpl = 0,
+        .descriptor_type = false,
+        .executable = true,
+        .accessed = true,
+        .rw = false,
+        .limit_high = @truncate(limit >> 16),
+        .granularity = false,
+    };
+
+    const high_part = @as(u64, base >> 32);
+    const ptr_entry: *u64 = @ptrCast(&gdt_entries[index + 1]);
+    ptr_entry.* = high_part;
 }
