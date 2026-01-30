@@ -66,11 +66,9 @@ pub const Logger = struct {
             },
             
             .pointer => |ptr_info| {
-                // Se for Slice de bytes ([]u8 ou []const u8) -> String
                 if (ptr_info.size == .slice and ptr_info.child == u8) {
                     screen.print(arg);
                 } 
-                // Se for ponteiro normal -> Hexadecimal
                 else {
                     screen.print("0x");
                     screen.printHex(@intFromPtr(arg));

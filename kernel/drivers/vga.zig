@@ -1,5 +1,3 @@
-const std = @import("std"); // Necessário se quiser usar o Writer no futuro
-
 pub const Color = enum(u8) {
     Black = 0,
     Blue = 1,
@@ -37,7 +35,7 @@ pub const VGA = struct {
         return VGA{
             .row = 0,
             .column = 0,
-            .color_attr = vgaEntry(' ', 0x0F) >> 8, // Pega cor padrão
+            .color_attr = vgaEntry(' ', 0x0F) >> 8,
             .video_address = video_address,
             .width = width,
             .height = height,
@@ -53,7 +51,6 @@ pub const VGA = struct {
     }
 
     pub fn clear(self: *VGA) void {
-        // Cast para ponteiro many-item [*]volatile u16
         const buffer: [*]volatile u16 = @ptrFromInt(self.video_address);
         const blank = vgaEntry(' ', self.color_attr);
 
@@ -147,12 +144,33 @@ pub const VGA = struct {
         }
     }
 
+    fn scroll(self: *VGA) void {
+        const buffer: [*]volatile u16 = @ptrFromInt(self.video_address);
+        const blank = vgaEntry(' ', self.color_attr);
+
+        var y: usize = 1;
+        while (y < self.height) : (y += 1) {
+            var x: usize = 0;
+            while (x < self.width) : (x += 1) {
+                const src_index = y * self.width + x;
+                const dst_index = (y - 1) * self.width + x;
+                buffer[dst_index] = buffer[src_index];
+            }
+        }
+
+        const last_row_start = (self.height - 1) * self.width;
+        var x: usize = 0;
+        while (x < self.width) : (x += 1) {
+            buffer[last_row_start + x] = blank;
+        }
+    }
+
     fn newLine(self: *VGA) void {
         self.column = 0;
         self.row += 1;
         if (self.row >= self.height) {
-            self.row = 0;
-            self.clear();
+            self.scroll();
+            self.row = self.height - 1;
         }
     }
 };
@@ -216,8 +234,8 @@ pub const PanicWriter = struct {
         var index: usize = 0;
 
         while (v > 0) {
-            const digit = v % 10; // Pega o último dígito
-            buffer[index] = '0' + @as(u8, @intCast(digit)); // Converte para char ASCII
+            const digit = v % 10;
+            buffer[index] = '0' + @as(u8, @intCast(digit));
             index += 1;
             v = v / 10;
         }
