@@ -138,12 +138,3 @@ pub fn free_page(addr: usize) void {
         clear_bit(page_idx);
     }
 }
-
-export fn memset(dest: [*]u8, val: i32, len: usize) [*]u8 {
-    var i: usize = 0;
-    const v: u8 = @intCast(val); 
-    while (i < len) : (i += 1) {
-        dest[i] = v;
-    }
-    return dest;
-}
