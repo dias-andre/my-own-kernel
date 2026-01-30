@@ -19,12 +19,12 @@ O objetivo é construir um pequeno sistema operacional x86_64 compatível com Mu
 
 ## 🚀 Status do Projeto
 
-O kernel está na fase de **Gerenciamento das Interrupções de Hardware**. A base de código já foi refatorada e escrita em Zig.
+O kernel está na fase de **Preparação para a troca de contexto**.
 
 ### ✅ Implementado
 - [x] **Bootloader:** Suporte a Multiboot (GRUB) via Assembly (`multiboot_header.asm`).
 - [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`kernel/main.zig`).
-- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`kernel/vga.zig`).
+- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`kernel/drivers/vga.zig`).
 - [x] **IDT (Interrupt Descriptor Table):** Tratamento básico de interrupções e exceções implementado em Zig.
 - [x] **Multiboot Parsing:** Leitura do mapa de memória fornecido pelo BIOS/GRUB.
 - [x] **PMM (Physical Memory Manager):**
@@ -34,10 +34,11 @@ O kernel está na fase de **Gerenciamento das Interrupções de Hardware**. A ba
 - [x] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
 - [x] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
 - [x] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
+- [x] **PIC:** Gerenciar interrupções de hardware.
 
-### 🚧 Em Progresso / Próximos Passos
+### 🚧 Em Progresso
 
-- [ ] **Keyboard Driver:** Driver PS/2 básico para entrada de dados.
+- [ ] **Multithreading:** Gerenciamento de Threads e trocas de contexto.
 
 ---
 
@@ -78,25 +79,13 @@ make debug
 ```text
 /
 ├── kernel/
-│   ├── arch/x86/        # Código específico de arquitetura (Assembly/Boot/x86)
+│   ├── arch/x86/        # Código específico de arquitetura (Assembly/GDT/IDT)
 │   ├── mm/              # Gerenciamento de Memória (Heap, VMM, PMM, Bitmap)
-│   ├── cpu.zig          # Utilitários do processador
-│   ├── idt.zig          # Tabela de Interrupções
-│   ├── gdt.zig          # Tabela de Descrição Global
+│   ├── drivers/         # Drivers no geral (Teclado, Vídeo, Timer)
+│   ├── utils/           # Utilitários do Kernel (Logger)
 │   ├── main.zig         # Ponto de entrada do Kernel
-│   ├── vga.zig          # Driver de Vídeo (Texto)
 │   └── multiboot.zig    # Parsing do cabeçalho Multiboot
 ├── linker.ld            # Script de Linkagem
 └── Makefile             # Automação de build
 
 ```
-
----
-
-## 🧠 Aprendizados
-
-Este projeto é um estudo prático sobre:
-
-1. **Interoperabilidade Zig/C/Assembly:** Como o Zig interage com código "naked" e convenções de chamada C.
-2. **Hardware Real:** Manipulação direta de endereços de memória, VGA buffer e registradores da CPU.
-3. **Algoritmos de OS:** Implementação manual de estruturas de dados como Bitmaps e Listas Encadeadas sem biblioteca padrão (`libc` ou `std`).
