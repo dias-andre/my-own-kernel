@@ -16,14 +16,14 @@ extern var _start: u8;
 extern var _end: u8;
 
 fn thread_b() void {
-    asm volatile("sti");
+    // asm volatile("sti");
     while(true) {
         klog.Logger.failed("b", .{});
     }
 }
 
 fn thread_a() void {
-    asm volatile("sti");
+    // asm volatile("sti");
     while(true) {
         klog.Logger.ok("a", .{});
     }

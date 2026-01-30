@@ -11,6 +11,9 @@ pub const Thread = struct {
         ptr -= 1;
         ptr[0] = entry_point;
 
+        ptr -= 1;
+        ptr[0] = 0x202;
+
         ptr -= 1; ptr[0] = 0; // R15
         ptr -= 1; ptr[0] = 0; // R14
         ptr -= 1; ptr[0] = 0; // R13

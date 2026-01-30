@@ -14,6 +14,7 @@ comptime {
         \\.intel_syntax noprefix
         \\.global switch_context
         \\switch_context:
+        \\  pushfq
         \\  push rbx
         \\  push rbp
         \\  push r12
@@ -30,6 +31,7 @@ comptime {
         \\  pop r12
         \\  pop rbp
         \\  pop rbx
+        \\  popfq
         \\
         \\  ret
     );
