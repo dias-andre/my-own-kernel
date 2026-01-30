@@ -1,8 +1,11 @@
+const Process = @import("../proc/process.zig").Process;
+
 pub const Thread = struct {
     rsp: usize,
     stack_base: usize,
     id: usize,
     next: ?*Thread,
+    process: ?*Process,
 
     pub fn init(self: *Thread, entry_point: usize) void {
         const stack_top = self.stack_base + 4096;
