@@ -23,19 +23,15 @@ pub const Heap = struct {
     pml4_phys: u64,
     end_addr: usize,
 
-    pub fn init(start: usize, initial_size: usize, pml4_phys: u64, vmmFlags: usize) Heap {
+    pub fn init(start: usize, initial_size: usize, pml4_phys: u64, vmmFlags: usize) !Heap {
         var current_virt = start;
         const end_virt = start + initial_size;
         const pml4: *vmm.PageTable = @ptrFromInt(pml4_phys);
 
         while (current_virt < end_virt) : (current_virt += 4096) {
-            const phys = pmm.allocate_page() orelse {
-                vga.printError("HEAP CRITICAL: OOM during heap start...");
-                while (true) asm volatile ("hlt");
-                unreachable;
-            };
+            const phys = try pmm.allocate_page();
 
-            vmm.map_page(pml4, current_virt, phys, vmmFlags);
+            try vmm.map_page(pml4, current_virt, phys, vmmFlags);
         }
 
         const first_block: *BlockHeader = @ptrFromInt(start);
@@ -47,9 +43,9 @@ pub const Heap = struct {
         return Heap{ .head = first_block, .pml4_phys = pml4_phys, .end_addr = end_virt };
     }
 
-    pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ?[*]u8 {
+    pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
         if (alignment == 0 or (alignment & (alignment - 1)) != 0) {
-            return null;
+            return error.InvalidAlignment;
         }
 
         var current = self.head;
@@ -89,16 +85,16 @@ pub const Heap = struct {
             if (current.next) |next_blk| {
                 current = next_blk;
             } else {
-                return null; // OOM
+                return error.OutOfMemory;
             }
         }
     }
 
-    pub fn alloc(self: *Heap, size: usize) ?[*]u8 {
-        return self.allocAligned(size, 16);
+    pub fn alloc(self: *Heap, size: usize) ![*]u8 {
+        return try self.allocAligned(size, 16);
     }
 
-    pub fn free(_: *Heap, ptr: [*]u8) void {
+    pub fn free(_: *Heap, ptr: [*]u8) !void {
         const addr = @intFromPtr(ptr);
         var search_addr = alignDown(addr - HEADER_SIZE, 16);
         const min_addr = search_addr -| 64;
@@ -111,8 +107,7 @@ pub const Heap = struct {
 
                 if (addr >= header_data_start and addr < header_data_end) {
                     if (potential_header.free) {
-                        vga.printError("DOUBLE FREE DETECTED: Block already freed!");
-                        while (true) asm volatile ("hlt");
+                        return error.DoubleFree;
                     }
                     if (potential_header.next) |next_block| {
                         if (next_block.free) {
@@ -126,7 +121,6 @@ pub const Heap = struct {
                 }
             }
         }
-        vga.printError("HEAP CORRUPTION: Invalid pointer passed to free!");
-        while (true) asm volatile ("hlt");
+        return error.InvalidPointer;
     }
 };

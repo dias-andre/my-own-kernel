@@ -1,4 +1,4 @@
-const vga = @import("vga.zig");
+const log = @import("utils/klog.zig").Logger;
 const mb = @import("multiboot.zig");
 const mm = @import("mm/index.zig");
 const gdt = @import("arch/x86/gdt.zig");
@@ -11,11 +11,8 @@ extern var _start: u8;
 extern var _end: u8;
 
 export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
-    vga.setColor(vga.Color.Green, vga.Color.Black);
-    vga.clear();
-    vga.print("The execution reached the kernel entry.\n");
-    vga.setDefaultColor();
-
+    log.info("The execution reached kernel main", .{});
+    
     // get multiboot info
     const mb_info = mb.init(pointer, magic);
     const kernel_end_addr = @intFromPtr(&_end);
@@ -27,11 +24,11 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     pic.remap();
     pit.init(100);
     cpu.sti();
+
     while (true) cpu.halt();
 }
 
 fn testFaultHandler() void {
-    vga.print("Forcing a crash in 3, 2, 1...\n");
     const bad_ptr: *u64 = @ptrFromInt(0xB0000000);
     bad_ptr.* = 0xDEADBEEF;
 }

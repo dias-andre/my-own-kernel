@@ -1,6 +1,6 @@
 const cpu = @import("../arch/x86/cpu.zig");
 const pic = @import("../arch/x86/pic.zig");
-const vga = @import("../vga.zig");
+const log = @import("../utils/klog.zig").Logger;
 
 const BASE_FREQUENCY = 1193180;
 const COMMAND_PORT = 0x43;
@@ -17,7 +17,7 @@ pub fn init(freq: u32) void {
   
   cpu.outb(DATA_PORT_0, l);
   cpu.outb(DATA_PORT_0, h);
-  vga.print("\n[PIT] Timer initialized!\n");
+  log.ok("[PIT] Timer initialized!", .{});
 }
 
 pub fn handle_irq() void {

@@ -1,4 +1,5 @@
 const vga = @import("../../vga.zig");
+const log = @import("../../utils/klog.zig").Logger;
 const vmm = @import("../../mm/vmm.zig");
 
 const cpu = @import("cpu.zig");
@@ -40,7 +41,7 @@ const IdtPtr = packed struct {
 var idt: [256]IdtEntry align(16) = undefined;
 
 pub fn init() void {
-    vga.print("\n[IDT] Creating new IDT entries...\n");
+    log.info("[IDT] Creating new IDT entries...", .{});
     for (0..256) |i| {
         idt[i].set(interrupts.isr_stub_table[i]);
     }
@@ -49,13 +50,13 @@ pub fn init() void {
         .base = @intFromPtr(&idt),
     };
 
-    vga.print("- Running lidt...\n");
+    log.println("- Running lidt...", .{});
     asm volatile ("lidt (%[ptr])"
         :
         : [ptr] "r" (&idt_ptr),
     );
 
-    vga.print("[IDT] Loaded successfully!\n");
+    log.ok("[IDT] Loaded successfully!", .{});
 }
 
 export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {

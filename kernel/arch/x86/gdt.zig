@@ -1,5 +1,5 @@
-const vga = @import("../../vga.zig");
 const tss_mod = @import("tss.zig");
+const log = @import("../../utils/klog.zig").Logger;
 
 const GdtEntry = packed struct(u64) {
     limit_low: u16 = 0, // bits 0-15
@@ -70,13 +70,12 @@ var gdt_entries = [_]GdtEntry{
 };
 
 pub fn init() void {
+    log.info("[GDT] Loading new GDT.", .{});
     const tss_base = @intFromPtr(&tss_mod.tss);
     const tss_limit = @sizeOf(tss_mod.TaskStateSegment);
 
     setTssEntry(5, tss_base, tss_limit);
-    vga.print("\n[GDT] Loading new GDT...\n");
     const gdt_ptr = GdtDescriptor{ .limit = @sizeOf(@TypeOf(gdt_entries)) - 1, .base = @intFromPtr(&gdt_entries) };
-    vga.print("- Running lgdt...\n");
     asm volatile (
         \\lgdt (%[ptr])
         // reload segment registers
@@ -95,14 +94,12 @@ pub fn init() void {
         : [ptr] "r" (&gdt_ptr),
         : .{ .memory = true }
     );
-    vga.print("[GDT] New GDT loaded successfully!\n");
-    vga.print("[TSS] Loading Task State Segment...\n");
     asm volatile(
         \\ ltr %ax
         :
         : [selector] "{ax}" (@as(u16, 0x28))
     );
-    vga.print("[TSS] Loaded Successfully!\n");
+    log.ok("[GDT] New GDT loaded successfully!", .{});
 }
 
 fn setTssEntry(index: usize, base: u64, limit: u64) void {
