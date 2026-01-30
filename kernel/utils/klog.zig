@@ -1,36 +1,38 @@
-const vga = @import("../vga.zig"); // Ajuste o import conforme necessário
+const video = @import("../drivers/vga.zig");
+
+pub var screen = video.VGA.init(80, 25, 0xb8000);
 
 pub const Logger = struct {
     pub fn info(comptime fmt: []const u8, args: anytype) void {
-        printHeader("INFO", vga.Color.Cyan);
+        printHeader("INFO", video.Color.Cyan);
         formatPrint(fmt, args);
-        vga.print("\n");
+        screen.print("\n");
     }
 
     pub fn ok(comptime fmt: []const u8, args: anytype) void {
-        printHeader(" OK ", vga.Color.Green);
+        printHeader(" OK ", video.Color.Green);
         formatPrint(fmt, args);
-        vga.print("\n");
+        screen.print("\n");
     }
 
     pub fn failed(comptime fmt: []const u8, args: anytype) void {
-        printHeader("FAIL", vga.Color.Red);
+        printHeader("FAIL", video.Color.Red);
         formatPrint(fmt, args);
-        vga.print("\n");
+        screen.print("\n");
     }
 
     pub fn println(comptime fmt: []const u8, args: anytype) void {
-        vga.print(" ");
+        screen.print(" ");
         formatPrint(fmt, args);
-        vga.print("\n");
+        screen.print("\n");
     }
 
-    fn printHeader(text: []const u8, color: vga.Color) void {
-        vga.print("[ ");
-        vga.setColor(color, vga.Color.Black);
-        vga.print(text);
-        vga.setDefaultColor();
-        vga.print(" ] ");
+    fn printHeader(text: []const u8, color: video.Color) void {
+        screen.print("[ ");
+        screen.setColor(color, video.Color.Black);
+        screen.print(text);
+        screen.setDefaultColor();
+        screen.print(" ] ");
     }
 
     fn formatPrint(comptime fmt: []const u8, args: anytype) void {
@@ -42,7 +44,7 @@ pub const Logger = struct {
                     break;
                 }
             }
-            vga.print(fmt[start..i]);
+            screen.print(fmt[start..i]);
 
             printArg(arg);
 
@@ -51,7 +53,7 @@ pub const Logger = struct {
             }
         }
         if (i < fmt.len) {
-            vga.print(fmt[i..]);
+            screen.print(fmt[i..]);
         }
     }
 
@@ -60,34 +62,34 @@ pub const Logger = struct {
         
         switch (@typeInfo(T)) {
             .int, .comptime_int => {
-                vga.printDec(@intCast(arg));
+                screen.printDec(@intCast(arg));
             },
             
             .pointer => |ptr_info| {
                 // Se for Slice de bytes ([]u8 ou []const u8) -> String
                 if (ptr_info.size == .slice and ptr_info.child == u8) {
-                    vga.print(arg);
+                    screen.print(arg);
                 } 
                 // Se for ponteiro normal -> Hexadecimal
                 else {
-                    vga.print("0x");
-                    vga.printHex(@intFromPtr(arg));
+                    screen.print("0x");
+                    screen.printHex(@intFromPtr(arg));
                 }
             },
             
             .bool => {
-                if (arg) vga.print("true") else vga.print("false");
+                if (arg) screen.print("true") else screen.print("false");
             },
 
             .optional => {
                 if (arg) |val| {
                     printArg(val);
                 } else {
-                    vga.print("null");
+                    screen.print("null");
                 }
             },
             else => {
-                vga.print("?");
+                screen.print("?");
             },
         }
     }

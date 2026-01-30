@@ -1,4 +1,4 @@
-const vga = @import("../../vga.zig");
+const vga = @import("../../drivers/vga.zig");
 const log = @import("../../utils/klog.zig").Logger;
 const vmm = @import("../../mm/vmm.zig");
 

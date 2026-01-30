@@ -1,6 +1,6 @@
-const vga = @import("../vga.zig");
 const vmm = @import("vmm.zig");
 const pmm = @import("pmm.zig");
+const log = @import("../utils/klog.zig").Logger;
 
 pub const BlockHeader = packed struct { size: usize, next: ?*BlockHeader, free: bool, magic: u32 };
 
@@ -52,9 +52,8 @@ pub const Heap = struct {
 
         while (true) {
             if (current.magic != 0xc0ffee) {
-                vga.printError("HEAP CORRUPTION: Bad magic number!\n");
-                vga.print("Block addr: 0x");
-                vga.printHex(@intFromPtr(current));
+                log.failed("HEAP CORRUPTION: Bad magic number!", .{});
+                log.println("- Block addr: {}", .{current});
                 while (true) asm volatile ("hlt");
             }
 

@@ -1,5 +1,5 @@
 const cpu = @import("../arch/x86/cpu.zig");
-const vga = @import("../vga.zig");
+const klog = @import("../utils/klog.zig");
 
 const KBD_DATA_PORT = 0x60;
 
@@ -18,7 +18,7 @@ pub fn handle_irq() void {
       const char = scancode_map[scancode];
       const arr = [_]u8{char};
       if(char != 0) {
-        vga.print(&arr);
+        klog.screen.print(&arr);
       }
     }
   }
