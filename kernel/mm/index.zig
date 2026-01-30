@@ -6,11 +6,13 @@ pub const vmm = @import("./vmm.zig");
 pub const heap = @import("./heap.zig");
 
 pub var kheap: heap.Heap = undefined;
+pub var kernel_page_directory: u64 = undefined;
 
 pub fn init(mb_info: *mb.MultibootInfo, kernel_end_addr: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
     pmm.init(mb_info, kernel_end_addr);
     vmm.init();
+    kernel_page_directory = @intFromPtr(vmm.kernel_pml4);
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});
 }
@@ -20,8 +22,7 @@ fn init_kernel_heap() void {
     log.println("-> Initial size: 1MB", .{});
     const HEAP_START: usize = 0x02000000;
     const HEAP_INITIAL_SIZE: usize = 1024 * 1024;
-    const pml4_phys: u64 = @intFromPtr(vmm.kernel_pml4);
-    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, pml4_phys, vmm.PAGE_PRESENT | vmm.PAGE_RW) catch |err| {
+    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, vmm.PAGE_PRESENT | vmm.PAGE_RW) catch |err| {
         switch (err) {
             error.NoPhysicalPages => {
                 log.failed("No physical pages during kernel heap initialization!", .{});
@@ -53,4 +54,13 @@ pub fn create(comptime T: type) !*T {
     const temp_slice = raw_ptr[0..@sizeOf(T)];
     @memset(temp_slice, 0);
     return ptr;
+}
+
+pub fn map_addr(page_directory: usize, virt: usize, phys: usize, flags: usize) !void {
+    const page: *vmm.PageTable = @ptrFromInt(page_directory);
+    try vmm.map_page(page, virt, phys, flags);
+}
+
+pub fn alloc_physical_page() !usize {
+    return try pmm.allocate_page();
 }
