@@ -44,6 +44,7 @@ fn prepare_thread(owner: *Process, entry_point: usize) !*Thread {
     new_thread.process = owner;
     owner.ref_count += 1;
 
+    new_thread.state = .Ready;
     new_thread.init(entry_point);
     return new_thread;
 }
@@ -62,6 +63,19 @@ pub fn init() void {
     };
     sch.push_thread(main_thread);
     log.ok("Process Manager started successfulyy! ", .{});
+}
+
+pub fn destroy_thread(thread: *Thread) void {
+    mem.free_physical_page(thread.stack_base);
+    if(thread.process) |owner| {
+        owner.ref_count -= 1;
+        if(owner.ref_count == 0) {
+            const process_ptr: [*]u8 = @ptrCast(owner);
+            try mem.kfree(process_ptr);
+        }
+    }
+    const thread_ptr: [*]u8 = @ptrCast(thread);
+    try mem.kfree(thread_ptr);
 }
 
 pub fn start_thread(process: ?*Process, entry_point: usize) !void {
