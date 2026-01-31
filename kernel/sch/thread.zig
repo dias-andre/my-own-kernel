@@ -1,11 +1,26 @@
 const Process = @import("../proc/process.zig").Process;
 
+pub const ThreadState = union(enum) {
+    Ready,
+    Running,
+    Blocked: struct {
+        reason: []const u8,
+    },
+    Sleeping: struct {
+        wake_at_tick: usize,
+    },
+    Zombie: struct {
+        exit_code: usize,
+    }
+};
+
 pub const Thread = struct {
     rsp: usize,
     stack_base: usize,
     id: usize,
     next: ?*Thread,
     process: ?*Process,
+    state: ThreadState,
 
     pub fn init(self: *Thread, entry_point: usize) void {
         const stack_top = self.stack_base + 4096;
@@ -24,5 +39,16 @@ pub const Thread = struct {
         ptr -= 1; ptr[0] = 0; // RBP
         ptr -= 1; ptr[0] = 0; // RBX
         self.rsp = @intFromPtr(ptr);
+    }
+
+    pub fn is_ready(self: *Thread) bool {
+        return self.state == .Ready;
+    }
+
+    pub fn is_blocked(self: *Thread) bool {
+        switch (self.state) {
+            .Blocked, .Sleeping => return true,
+            else => return false
+        }
     }
 };

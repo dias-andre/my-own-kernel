@@ -1,10 +1,6 @@
-const log = @import("../utils/klog.zig").Logger;
 const ctx = @import("context.zig");
-const mem = @import("../mm/index.zig");
 const Thread = @import("thread.zig").Thread;
-const proc = @import("../proc/manager.zig");
-
-const HHDM_OFFSET = 0xFFFF800000000000;
+const pit = @import("../drivers/pit.zig");
 
 var current_thread: ?*Thread = null;
 
@@ -20,14 +16,40 @@ pub fn push_thread(new_thread: *Thread) void {
 
 pub fn schedule() void {
     if (current_thread) |prev| {
+        if (prev.state == .Running) {
+            prev.state = .Ready;
+        }
+
         var next = prev.next;
 
-        if (next == null) next = prev;
+        while (next != null) {
+            if (next.?.state == .Ready) {
+                break;
+            }
 
-        if (next == prev) return;
+            if (next == prev) {
+                if (prev.state != .Ready) {
+                    return;
+                }
+                break;
+            }
 
-        current_thread = next;
+            next = next.?.next;
+        }
 
-        ctx.switch_context(&prev.rsp, next.?.rsp);
+        if (next) |next_thread| {
+            if (next_thread == prev) {
+                next_thread.state = .Running;
+                return;
+            }
+
+            current_thread = next_thread;
+            next_thread.state = .Running;
+            ctx.switch_context(&prev.rsp, next_thread.rsp);
+        }
     }
+}
+
+pub fn get_current_thread() *Thread {
+    return current_thread.?;
 }
