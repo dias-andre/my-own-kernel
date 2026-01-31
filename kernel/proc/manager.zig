@@ -78,7 +78,7 @@ pub fn destroy_thread(thread: *Thread) !void {
         return error.ThreadNotRemoved;
     }
     
-    const stack_phys = mem.virt_phys(thread.stack_base);
+    const stack_phys = mem.virt_to_phys(thread.stack_base);
     mem.free_physical_page(stack_phys);
     // if(thread.process) |owner| {
     //     owner.ref_count -= 1;

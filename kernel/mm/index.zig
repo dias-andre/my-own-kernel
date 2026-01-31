@@ -7,9 +7,9 @@ pub const heap = @import("./heap.zig");
 
 pub const HHDM_OFFSET = 0xFFFF800000000000;
 
-pub var kheap: heap.Heap = undefined;
-pub var kernel_page_directory: u64 = undefined;
-pub var total_ram: usize = undefined;
+var kheap: heap.Heap = undefined;
+var kernel_page_directory: u64 = undefined;
+var total_ram: usize = undefined;
 
 pub fn init(mb_info: *mb.MultibootInfo, kernel_end_addr: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
@@ -76,7 +76,7 @@ pub fn phys_to_virt(phys: usize) usize {
     return phys + HHDM_OFFSET;
 }
 
-pub fn virt_phys(virt: usize) usize {
+pub fn virt_to_phys(virt: usize) usize {
     if(virt < HHDM_OFFSET) {
         return virt;
     }
