@@ -21,7 +21,7 @@ extern var _end: u8;
 
 fn thread_b() void {
     log.info("Thread B started!", .{});
-    log.info("Thread B Sleeping...", .{});
+    log.println("- Thread B exit with code 0", .{});
     sys_exit(0);
     while(true) {
         var i: usize = 0;
@@ -53,20 +53,22 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
     pic.remap();
     pit.init(100);
 
+    log.info("Enabling Interrupts...", .{});
     cpu.sti();
-    log.info("Interrupts enabled! ", .{});
+    log.ok("Interrupts enabled! ", .{});
 
     log.info("Enabling System calls...", .{});
     const syscall_entry: u64 = @intFromPtr(&sys.syscall_entry);
     cpu.enable_syscalls(syscall_entry);
     log.ok("System calls enabled! ", .{});
 
-    proc.start_thread(null, @intFromPtr(&thread_a)) catch {
+    log.info("Creating kernel threads", .{});
+    proc.spawn_kernel_thread(@intFromPtr(&thread_a)) catch {
         log.failed("Error to start thread_a", .{});
         while(true) asm volatile("hlt");
     };
-    proc.start_thread(null, @intFromPtr(&thread_b)) catch {
-        log.failed("Error to start thread_b", .{});
+    proc.spawn_kernel_thread(@intFromPtr(&thread_b)) catch {
+        log.failed("Error to startread_b", .{});
         while(true) asm volatile("hlt");
     };
     while (true) cpu.halt();
