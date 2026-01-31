@@ -3,6 +3,11 @@ pub const Process = struct {
     name: []const u8,
     ref_count: usize,
     page_directory: usize,
-    next: ?*Process
+    next: ?*Process,
+
+    parent: ?*Process,
+    first_child: ?*Process,
+    next_sibling: ?*Process,
+    
 };
 
