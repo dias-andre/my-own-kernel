@@ -89,21 +89,70 @@ pub fn phys_to_ptr(comptime T: type, phys: usize) *T {
 
 pub fn clone_pml4(parent_pml4_phys: usize) !usize {
     const child_pml4_phys = try pmm.allocate_page();
-    const parent_table_ptr = phys_to_virt(parent_pml4_phys);
-    const child_table_ptr = phys_to_virt(child_pml4_phys);
+    const parent_table = phys_to_ptr(vmm.PageTable, parent_pml4_phys);
+    const child_table = phys_to_ptr(vmm.PageTable, child_pml4_phys);
 
-    const parent_table: *vmm.PageTable = @ptrFromInt(parent_table_ptr);
-    const child_table: *vmm.PageTable = @ptrFromInt(child_table_ptr);
-
+    child_table.clear();
     for (0..512) |i| {
         const entry = parent_table.entries[i];
 
-        if((entry | vmm.PAGE_PRESENT) == 0) continue;
+        if((entry & vmm.PAGE_PRESENT) == 0) continue;
 
         if(i >= 256) {
             child_table.entries[i] = entry;
         } else {
-            // chlid_table[i] = try clone_pdpt()
+            const child_pdpt_phys = try clone_table(entry, 3);
+            const flags = entry & ~vmm.PAGE_ADDR_MASK;
+            child_table.entries[i] = child_pdpt_phys | flags;
         }
     }
+
+    return child_pml4_phys;
+}
+
+fn clone_table(parent_entry: u64, level: u8) !usize {
+    const parent_phys = parent_entry & vmm.PAGE_ADDR_MASK;
+    const parent_table = phys_to_ptr(vmm.PageTable, parent_phys);
+
+    const child_table_phys = try pmm.allocate_page();
+    const child_table = phys_to_ptr(vmm.PageTable, child_table_phys);
+
+    for(0..512) |i| {
+        const entry = parent_table.entries[i];
+        if ((entry & vmm.PAGE_PRESENT) == 0) continue;
+
+        const flags = entry & ~vmm.PAGE_ADDR_MASK;
+        if(level == 2) {
+            const child_pt_phys = try clone_page_table(entry);
+            child_table.entries[i] = child_pt_phys | flags;
+        } else {
+            const child_next_phys = try clone_table(entry, level - 1);
+            child_table.entries[i] = child_next_phys | flags;
+        }
+    }
+    return child_table_phys;
+}
+
+fn clone_page_table(parent_pt_entry: u64) !usize {
+    const parent_pt_phys = parent_pt_entry & vmm.PAGE_ADDR_MASK;
+    const parent_pt = phys_to_ptr(vmm.PageTable, parent_pt_phys);
+    const child_pt_phys = try pmm.allocate_page();
+    const child_pt = phys_to_ptr(vmm.PageTable, child_pt_phys);
+    child_pt.clear();
+
+    for(0..512) |i| {
+        const entry = parent_pt.entries[i];
+        if ((entry & vmm.PAGE_PRESENT) == 0) continue;
+
+        const flags = entry & ~vmm.PAGE_ADDR_MASK;
+        const parent_page_phys = entry & vmm.PAGE_ADDR_MASK;
+        const child_page_phys = try pmm.allocate_page();
+        const src_ptr = phys_to_ptr([4096]u8, parent_page_phys);
+        const dst_ptr = phys_to_ptr([4096]u8, child_page_phys);
+
+        @memcpy(dst_ptr, src_ptr);
+
+        child_pt.entries[i] = child_page_phys | flags;
+    }
+    return child_pt_phys;
 }
