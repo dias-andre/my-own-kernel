@@ -10,12 +10,16 @@ pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
 } };
 
 pub const Thread = struct {
+    id: usize,
     rsp: usize,
     stack_base: usize,
-    id: usize,
+    
     next: ?*Thread,
-    process: ?*Process,
     state: ThreadState,
+
+    // created for process controller
+    next_sibling: ?*Thread,
+    process: ?*Process,
 
     pub fn init(self: *Thread, entry_point: usize) void {
         const stack_top = self.stack_base + 4096;
