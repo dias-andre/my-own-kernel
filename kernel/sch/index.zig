@@ -50,6 +50,6 @@ pub fn schedule() void {
     }
 }
 
-pub fn get_current_thread() *Thread {
-    return current_thread.?;
+pub fn get_current_thread() ?*Thread {
+    return current_thread;
 }
