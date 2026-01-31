@@ -38,3 +38,14 @@ comptime {
 }
 // salvar os registradores que são (callee-saved)
 pub extern fn switch_context(current_rsp_ptr: *u64, next_rsp: u64) void;
+
+pub const SwitchContext = packed struct {
+    r15: usize,
+    r14: usize,
+    r13: usize,
+    r12: usize,
+    rbp: usize,
+    rbx: usize,
+    rflags: usize,
+    rip: usize,
+};

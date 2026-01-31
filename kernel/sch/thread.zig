@@ -1,18 +1,13 @@
 const Process = @import("../proc/process.zig").Process;
+const SwitchContext = @import("context.zig").SwitchContext;
 
-pub const ThreadState = union(enum) {
-    Ready,
-    Running,
-    Blocked: struct {
-        reason: []const u8,
-    },
-    Sleeping: struct {
-        wake_at_tick: usize,
-    },
-    Zombie: struct {
-        exit_code: usize,
-    }
-};
+pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
+    reason: []const u8,
+}, Sleeping: struct {
+    wake_at_tick: usize,
+}, Zombie: struct {
+    exit_code: usize,
+} };
 
 pub const Thread = struct {
     rsp: usize,
@@ -24,21 +19,17 @@ pub const Thread = struct {
 
     pub fn init(self: *Thread, entry_point: usize) void {
         const stack_top = self.stack_base + 4096;
-        var ptr = @as([*]u64, @ptrFromInt(stack_top));
+        var sp = stack_top;
 
-        ptr -= 1;
-        ptr[0] = entry_point;
+        sp -= @sizeOf(SwitchContext);
+        const sc: *SwitchContext = @ptrFromInt(sp);
 
-        ptr -= 1;
-        ptr[0] = 0x202;
+        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(SwitchContext)];
+        @memset(sc_bytes, 0);
+        sc.rip = entry_point;
+        sc.rflags = 0x202;
 
-        ptr -= 1; ptr[0] = 0; // R15
-        ptr -= 1; ptr[0] = 0; // R14
-        ptr -= 1; ptr[0] = 0; // R13
-        ptr -= 1; ptr[0] = 0; // R12
-        ptr -= 1; ptr[0] = 0; // RBP
-        ptr -= 1; ptr[0] = 0; // RBX
-        self.rsp = @intFromPtr(ptr);
+        self.rsp = sp;
     }
 
     pub fn is_ready(self: *Thread) bool {
@@ -48,7 +39,7 @@ pub const Thread = struct {
     pub fn is_blocked(self: *Thread) bool {
         switch (self.state) {
             .Blocked, .Sleeping => return true,
-            else => return false
+            else => return false,
         }
     }
 };
