@@ -14,6 +14,8 @@ const log = @import("utils/klog.zig").Logger;
 
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
 
+const sys = @import("sys/entry.zig");
+
 extern var _start: u8;
 extern var _end: u8;
 
@@ -53,6 +55,12 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
 
     cpu.sti();
     log.info("Interrupts enabled! ", .{});
+
+    log.info("Enabling System calls...", .{});
+    const syscall_entry: u64 = @intFromPtr(&sys.syscall_entry);
+    cpu.enable_syscalls(syscall_entry);
+    log.ok("System calls enabled! ", .{});
+
     proc.start_thread(null, @intFromPtr(&thread_a)) catch {
         log.failed("Error to start thread_a", .{});
         while(true) asm volatile("hlt");
