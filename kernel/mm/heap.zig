@@ -1,6 +1,7 @@
 const vmm = @import("vmm.zig");
 const pmm = @import("pmm.zig");
 const log = @import("../utils/klog.zig").Logger;
+const std = @import("std");
 
 pub const BlockHeader = packed struct { size: usize, next: ?*BlockHeader, free: bool, magic: u32 };
 
@@ -122,5 +123,39 @@ pub const Heap = struct {
             }
         }
         return error.InvalidPointer;
+    }
+
+    pub fn allocator(self: *Heap) std.mem.Allocator {
+        return std.mem.Allocator{
+            .ptr = self,
+            .vtable = &vtable,
+        };
+    }
+
+    const vtable = std.mem.Allocator.VTable{
+        .alloc = implAlloc,
+        .resize = implResize,
+        .free = implFree,
+    };
+
+    fn implAlloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+        var self: *Heap = @ptrCast(@alignCast(ctx));
+        _ = ret_addr;
+        const alignment = @as(usize, 1) << @as(u6, @intCast(ptr_align));
+        return self.allocAligned(len, alignment) catch null;
+    }
+
+    fn implResize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+        _ = ctx; _ = buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        return false;
+    }
+
+    fn implFree(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+        var self: *Heap = @ptrCast(@alignCast(ctx));
+        _ = buf_align; _ = ret_addr;
+
+        self.free(buf.ptr) catch |err| {
+            log.failed("Allocator Free Error: {}", .{err});
+        };
     }
 };
