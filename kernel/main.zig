@@ -12,19 +12,26 @@ const proc = @import("proc/manager.zig");
 const vmm = @import("mm/vmm.zig");
 const log = @import("utils/klog.zig").Logger;
 
+const sys_exit = @import("sys/sys_exit.zig").sys_exit;
+
 extern var _start: u8;
 extern var _end: u8;
 
 fn thread_b() void {
+    log.info("Thread B started!", .{});
+    log.info("Thread B Sleeping...", .{});
+    sys_exit(0);
     while(true) {
-        log.info("B", .{});
+        var i: usize = 0;
+        while(i < 10000):(i += 1) {
+            log.println("b", .{});
+        }
     }
 }
 
 fn thread_a() void {
-    while(true) {
-        log.ok("A", .{});
-    }
+    log.info("Starting Thread A", .{});
+    while(true) {}
 }
 
 export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
