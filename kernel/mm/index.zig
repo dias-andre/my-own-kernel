@@ -64,3 +64,7 @@ pub fn map_addr(page_directory: usize, virt: usize, phys: usize, flags: usize) !
 pub fn alloc_physical_page() !usize {
     return try pmm.allocate_page();
 }
+
+pub fn free_physical_page(addr: usize) void {
+    pmm.free_page(addr);
+}
