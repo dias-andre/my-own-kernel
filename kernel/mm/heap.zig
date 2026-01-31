@@ -135,27 +135,32 @@ pub const Heap = struct {
     const vtable = std.mem.Allocator.VTable{
         .alloc = implAlloc,
         .resize = implResize,
+        .remap = implRemap,
         .free = implFree,
     };
 
-    fn implAlloc(ctx: *anyopaque, len: usize, ptr_align: u8, ret_addr: usize) ?[*]u8 {
+    fn implAlloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
         var self: *Heap = @ptrCast(@alignCast(ctx));
         _ = ret_addr;
-        const alignment = @as(usize, 1) << @as(u6, @intCast(ptr_align));
-        return self.allocAligned(len, alignment) catch null;
+        return self.allocAligned(len, ptr_align.toByteUnits()) catch null;
     }
 
-    fn implResize(ctx: *anyopaque, buf: []u8, buf_align: u8, new_len: usize, ret_addr: usize) bool {
+    fn implResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
         _ = ctx; _ = buf; _ = buf_align; _ = new_len; _ = ret_addr;
         return false;
     }
 
-    fn implFree(ctx: *anyopaque, buf: []u8, buf_align: u8, ret_addr: usize) void {
+    fn implFree(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
         var self: *Heap = @ptrCast(@alignCast(ctx));
         _ = buf_align; _ = ret_addr;
 
         self.free(buf.ptr) catch |err| {
             log.failed("Allocator Free Error: {}", .{err});
         };
+    }
+    
+    fn implRemap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
+        _ = ctx; _ = memory; _ = alignment; _ = new_len; _ = ret_addr;
+        return null;
     }
 };

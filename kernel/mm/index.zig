@@ -1,3 +1,4 @@
+const std = @import("std");
 const mb = @import("../multiboot.zig");
 const log = @import("../utils/klog.zig").Logger;
 
@@ -36,13 +37,12 @@ fn init_kernel_heap() void {
     log.ok("Kernel heap mapped successfully!", .{});
 }
 
-pub fn kmalloc(space: usize) ![]u8 {
-    const allocated = try kheap.alloc(space);
-    return allocated[0..space];
+pub fn kernel_allocator() std.mem.Allocator {
+    return kheap.allocator();
 }
 
-pub fn kfree(address: [*]u8) !void {
-    try kheap.free(address);
+pub fn kernel_pml4() u64 {
+    return kernel_page_directory;
 }
 
 pub fn create(comptime T: type) !*T {
