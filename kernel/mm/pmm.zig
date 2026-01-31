@@ -27,7 +27,7 @@ fn align_up(addr: usize) usize {
     return (addr + PAGE_SIZE) - (addr % PAGE_SIZE);
 }
 
-pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) void {
+pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) usize {
     log.info("(PMM) Initializing physical memory manager...", .{});
 
     max_phys_addr = calculateTotalMemory(mb_info);
@@ -69,6 +69,7 @@ pub fn init(mb_info: *const mb.MultibootInfo, kernel_end: usize) void {
     deinit_region(0, final_reserved_addr);
 
     log.ok("(PMM) Done! ", .{});
+    return max_phys_addr;
 }
 
 fn init_region(base: u64, length: u64) void {

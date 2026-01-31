@@ -5,13 +5,16 @@ pub const pmm = @import("./pmm.zig");
 pub const vmm = @import("./vmm.zig");
 pub const heap = @import("./heap.zig");
 
+pub const HHDM_OFFSET = 0xFFFF800000000000;
+
 pub var kheap: heap.Heap = undefined;
 pub var kernel_page_directory: u64 = undefined;
+pub var total_ram: usize = undefined;
 
 pub fn init(mb_info: *mb.MultibootInfo, kernel_end_addr: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
-    pmm.init(mb_info, kernel_end_addr);
-    vmm.init();
+    total_ram = pmm.init(mb_info, kernel_end_addr);
+    vmm.init(total_ram);
     kernel_page_directory = @intFromPtr(vmm.kernel_pml4);
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});
@@ -67,4 +70,40 @@ pub fn alloc_physical_page() !usize {
 
 pub fn free_physical_page(addr: usize) void {
     pmm.free_page(addr);
+}
+
+pub fn phys_to_virt(phys: usize) usize {
+    return phys + HHDM_OFFSET;
+}
+
+pub fn virt_phys(virt: usize) usize {
+    if(virt < HHDM_OFFSET) {
+        return virt;
+    }
+    return virt - HHDM_OFFSET;
+}
+
+pub fn phys_to_ptr(comptime T: type, phys: usize) *T {
+    return @ptrFromInt(phys_to_virt(phys));
+}
+
+pub fn clone_pml4(parent_pml4_phys: usize) !usize {
+    const child_pml4_phys = try pmm.allocate_page();
+    const parent_table_ptr = phys_to_virt(parent_pml4_phys);
+    const child_table_ptr = phys_to_virt(child_pml4_phys);
+
+    const parent_table: *vmm.PageTable = @ptrFromInt(parent_table_ptr);
+    const child_table: *vmm.PageTable = @ptrFromInt(child_table_ptr);
+
+    for (0..512) |i| {
+        const entry = parent_table.entries[i];
+
+        if((entry | vmm.PAGE_PRESENT) == 0) continue;
+
+        if(i >= 256) {
+            child_table.entries[i] = entry;
+        } else {
+            // chlid_table[i] = try clone_pdpt()
+        }
+    }
 }

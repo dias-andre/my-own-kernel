@@ -1,4 +1,5 @@
 const pmm = @import("./pmm.zig");
+const index = @import("index.zig");
 const log = @import("../utils/klog.zig").Logger;
 // ==========================================
 // CONSTANTES DE PAGINAÇÃO (FLAGS)
@@ -46,7 +47,9 @@ fn get_pt_index(virt_addr: usize) usize {
     return (virt_addr >> 12) & 0x1ff;
 }
 
-pub fn init() void {
+pub var is_paging_ready: bool = false;
+
+pub fn init(memory_size: usize) void {
     log.info("(VMM) Initializing Virtual Memory Manager.", .{});
 
     const pml4_phys = pmm.allocate_page() catch |err| {
@@ -65,19 +68,25 @@ pub fn init() void {
 
     // TODO: identity mapping
     var current_addr: usize = 0;
-    const max_addr: usize = 0x1000000;
+    const aligned_limit = (memory_size + 4095) & ~@as(usize, 4095);
 
-    while (current_addr < max_addr) : (current_addr += 4096) {
+    while (current_addr < aligned_limit) : (current_addr += 4096) {
         const flags = PAGE_PRESENT | PAGE_RW;
         map_page(kernel_pml4, current_addr, current_addr, flags) catch {
             log.failed("Failed to allocate physical page during VMM initialization", .{});
             while(true) asm volatile("hlt");
         };
+        const virt_hhdm = current_addr + index.HHDM_OFFSET;
+        map_page(kernel_pml4, virt_hhdm, current_addr, flags) catch {
+            log.failed("Failed to allocate physical page during VMM initialization", .{});
+            while(true) asm volatile("hlt");
+        };
     }
-    log.println("- Identity mapped first 16MB", .{});
+    log.println("- Identity mapped first {}MB", .{aligned_limit / 1024 / 1024});
     log.println("- Loading CR3...", .{});
 
     load_pml4(kernel_pml4);
+    is_paging_ready = true;
     log.ok("(VMM) Paging enabled successfully!", .{});
 }
 
@@ -121,7 +130,13 @@ fn get_next_table(entry: *u64) !*PageTable {
     }
 
     const phys_addr = addr & PAGE_ADDR_MASK;
-    return @ptrFromInt(phys_addr);
+    // return @ptrFromInt(phys_addr);
+    // return index.phys_to_ptr(PageTable, phys_addr);
+    if(is_paging_ready) {
+        return index.phys_to_ptr(PageTable, phys_addr);
+    } else {
+        return @ptrFromInt(phys_addr);
+    }
 }
 
 pub fn load_pml4(pml4: *PageTable) void {
