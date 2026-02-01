@@ -21,7 +21,7 @@ extern var _end: u8;
 
 fn thread_b() void {
     log.info("Thread B started!", .{});
-    log.println("- Thread B exit with code 0", .{});
+    log.println("- Thread B exited with code 0", .{});
     sys_exit(0);
     while(true) {
         var i: usize = 0;
@@ -33,7 +33,7 @@ fn thread_b() void {
 
 fn thread_a() void {
     log.info("Starting Thread A", .{});
-    while(true) {}
+    while(true) asm volatile("hlt");
 }
 
 export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
@@ -68,7 +68,7 @@ export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
         while(true) asm volatile("hlt");
     };
     proc.spawn_kernel_thread(@intFromPtr(&thread_b)) catch {
-        log.failed("Error to startread_b", .{});
+        log.failed("Error to start thread_b", .{});
         while(true) asm volatile("hlt");
     };
     while (true) cpu.halt();
