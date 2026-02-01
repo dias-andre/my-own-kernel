@@ -45,20 +45,6 @@ pub fn kernel_pml4() u64 {
     return kernel_page_directory;
 }
 
-pub fn create(comptime T: type) !*T {
-    const raw_ptr = try kheap.alloc(@sizeOf(T));
-    const addr = @intFromPtr(raw_ptr);
-    
-    if (addr % @alignOf(T) != 0) {
-        return error.InvalidAlignment;
-    }
-
-    const ptr: *T = @ptrCast(@alignCast(raw_ptr));
-    const temp_slice = raw_ptr[0..@sizeOf(T)];
-    @memset(temp_slice, 0);
-    return ptr;
-}
-
 pub fn map_addr(page_directory: usize, virt: usize, phys: usize, flags: usize) !void {
     const page: *vmm.PageTable = @ptrFromInt(page_directory);
     try vmm.map_page(page, virt, phys, flags);
@@ -155,4 +141,19 @@ fn clone_page_table(parent_pt_entry: u64) !usize {
         child_pt.entries[i] = child_page_phys | flags;
     }
     return child_pt_phys;
+}
+
+pub fn create_pml4() !usize {
+    const phys_addr = try pmm.allocate_page();
+    const virt_addr = phys_to_virt(phys_addr);
+    const pml4: *vmm.PageTable = @ptrFromInt(virt_addr);
+    pml4.clear();
+
+    const kernel_page_table: *vmm.PageTable = @ptrFromInt(kernel_page_directory);
+
+    for(256..512) |i| {
+        pml4.entries[i] = kernel_page_table.entries[i];
+    }
+
+    return phys_addr;
 }
