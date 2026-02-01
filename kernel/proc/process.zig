@@ -11,7 +11,7 @@ pub const Process = struct {
     page_directory: usize,
 
     parent: ?*Process,
-    first_child: ?*Process,
+    child_list_head: ?*Process,
     next_sibling: ?*Process,
 
     thread_list_head: ?*Thread,
@@ -27,7 +27,7 @@ pub const Process = struct {
     }
 
     pub fn iterateChildren(self: *Process) ProcessIterator {
-        return ProcessIterator{ .current = self.first_child };
+        return ProcessIterator{ .current = self.child_list_head };
     }
 
     pub fn removeThread(self: *Process, target: *Thread) bool {
@@ -51,8 +51,13 @@ pub const Process = struct {
         return false;
     }
 
+    pub fn addChild(self: *Process, new_proc: *Process) void {
+        new_proc.next_sibling = self.child_list_head;
+        self.child_list_head = new_proc;
+    }
+
     pub fn removeChild(self: *Process, target: *Process) bool {
-        const head = self.first_child orelse return false;
+        const head = self.child_list_head orelse return false;
 
         if (head == target) {
             self.thread_list_head = head.next_sibling;
@@ -115,8 +120,8 @@ pub fn fork(parent: *Process) !usize {
 
     const new_process = try manager.create_process(parent.name, pml4_clone);
     new_process.parent = parent;
-    new_process.next_sibling = parent.first_child;
-    parent.first_child = new_process;
+    new_process.next_sibling = parent.child_list_head;
+    parent.child_list_head = new_process;
 
     return new_process.id;
     // TODO: thread clone
