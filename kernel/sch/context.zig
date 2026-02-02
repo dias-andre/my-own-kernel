@@ -49,3 +49,11 @@ pub const SwitchContext = packed struct {
     rflags: usize,
     rip: usize,
 };
+
+pub const InterruptFrame = packed struct {
+    rip: u64,
+    cs: u64,
+    rflags: u64,
+    rsp: u64,
+    ss: u64,
+};

@@ -1,5 +1,5 @@
 const Process = @import("../proc/process.zig").Process;
-const SwitchContext = @import("context.zig").SwitchContext;
+const ctx = @import("context.zig");
 const std = @import("std");
 const kmem = @import("../mm/index.zig");
 
@@ -27,14 +27,36 @@ pub const Thread = struct {
         const stack_top = self.stack_base + 4096;
         var sp = stack_top;
 
-        sp -= @sizeOf(SwitchContext);
-        const sc: *SwitchContext = @ptrFromInt(sp);
+        sp -= @sizeOf(ctx.SwitchContext);
+        const sc: *ctx.SwitchContext = @ptrFromInt(sp);
 
-        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(SwitchContext)];
+        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(ctx.SwitchContext)];
         @memset(sc_bytes, 0);
         sc.rip = entry_point;
         sc.rflags = 0x202;
 
+        self.rsp = sp;
+    }
+
+    pub fn init_user_mode(self: *Thread, entry_point: usize, user_stack: usize) void {
+        const stack_top = self.stack_base + 4096;
+        var sp = stack_top;
+
+        sp -= @sizeOf(ctx.InterruptFrame);
+        const frame: *ctx.InterruptFrame = @ptrFromInt(sp);
+        frame.ss = 0x23;
+        frame.rsp = user_stack;
+        frame.rflags = 0x202;
+        frame.cs = 0x1B;
+        frame.rip = entry_point;
+
+        sp -= @sizeOf(ctx.SwitchContext);
+        const sc: *ctx.SwitchContext = @ptrFromInt(sp);
+        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(ctx.SwitchContext)];
+        @memset(sc_bytes, 0);
+
+        sc.rip = @intFromPtr(&interrupt_return_stub);
+        sc.rflags = 0x202;
         self.rsp = sp;
     }
 
@@ -69,3 +91,7 @@ pub const Thread = struct {
         }
     }
 };
+
+pub fn interrupt_return_stub() callconv(.naked) void {
+    asm volatile ("iretq");
+}
