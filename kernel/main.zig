@@ -41,6 +41,7 @@ fn thread_a() void {
 export fn kernel_main() noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
+    while(true) arch.cpu.idle();
     // map_video_address();
     // proc.init();
     // pic.remap();
