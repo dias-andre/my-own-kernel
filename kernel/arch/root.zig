@@ -43,6 +43,36 @@ comptime {
     if (!@hasDecl(timer, "init")) {
         @compileError(missing_error ++ "timer.init(freq: u32) void");
     }
+
+    if(!@hasDecl(timer, "get_ticks")) {
+        @compileError(missing_error ++ "timer.get_ticks() u64");
+    }
+
+    // memory
+
+    if(!@hasDecl(memory, "init")) {
+        @compileError(missing_error ++ "memory.init() void");
+    }
+
+    if(!@hasDecl(memory, "max_ram")) {
+        @compileError(missing_error ++ "memory.max_ram() usize");
+    }
+
+    if(!@hasDecl(memory, "phys_to_virt")) {
+        @compileError(missing_error ++ "memory.phys_to_virt() usize");
+    }
+
+    if(!@hasDecl(memory, "virt_to_phys")) {
+        @compileError(missing_error ++ "memory.virt_to_phys() usize");
+    }
+
+    if(!@hasDecl(memory, "phys_to_ptr")) {
+        @compileError(missing_error ++ "memory.phys_to_ptr() *T");
+    }
+
+    if(!@hasDecl(memory, "memory_regions")) {
+        @compileError(missing_error ++ "memory.memory_regions() []MemoryRegion");
+    }
 }
 
 
