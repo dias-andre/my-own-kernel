@@ -26,9 +26,9 @@ fn align_up(addr: usize) usize {
     return (addr + arch.memory.PAGE_SIZE) - (addr % arch.memory.PAGE_SIZE);
 }
 
-pub fn init(kernel_end: usize) usize {
+pub fn init(kernel_end: usize) void {
     log.info("(PMM) Initializing physical memory manager...", .{});
-    total_pages = arch.memory.get_total_ram() / arch.memory.PAGE_SIZE;
+    total_pages = arch.memory.max_ram() / arch.memory.PAGE_SIZE;
 
     bitmap_size = total_pages / 8;
 
@@ -36,7 +36,7 @@ pub fn init(kernel_end: usize) usize {
     bitmap = @ptrFromInt(bitmap_phys_addr);
 
     // DEBUG INFO
-    log.println("- Total RAM: {}MB", .{arch.memory.get_total_ram() / 1024 / 1024});
+    log.println("- Total RAM: {}MB", .{arch.memory.max_ram() / 1024 / 1024});
     log.println("- Bitmap size: {} bytes", .{bitmap_size});
 
     fill_memory(bitmap, 0xff, bitmap_size);
@@ -51,7 +51,6 @@ pub fn init(kernel_end: usize) usize {
     deinit_region(0, final_reserved_addr);
 
     log.ok("(PMM) Done! ", .{});
-    return max_phys_addr;
 }
 
 fn init_region(base: u64, length: u64) void {
