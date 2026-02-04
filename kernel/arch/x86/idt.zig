@@ -4,12 +4,12 @@ const vmm = @import("../../mm/vmm.zig");
 const cpu = @import("cpu.zig");
 const pic = @import("pic.zig");
 
-const pit = @import("../../drivers/pit.zig");
+const pit = @import("pit.zig");
 const kbd = @import("../../drivers/keyboard.zig");
 
 const PanicWriter = vga.PanicWriter;
 
-const interrupts = @import("isr_stup_table.zig");
+const interrupts = @import("isr_stub_table.zig");
 
 const IdtEntry = packed struct {
     offset_low: u16,
