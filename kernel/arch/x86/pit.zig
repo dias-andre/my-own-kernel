@@ -6,9 +6,9 @@ const COMMAND_PORT = 0x43;
 const DATA_PORT_0 = 0x40;
 
 var ticks: u64 = 0;
-var handler: ?*const fn () void = null;
+var handler: *const fn () void = undefined;
 
-pub fn init(freq: u32) void {
+pub fn init(freq: u32, func: *const fn () void) void {
     const divisor = BASE_FREQUENCY / freq;
     cpu.outb(COMMAND_PORT, 0x36);
 
@@ -17,9 +17,6 @@ pub fn init(freq: u32) void {
 
     cpu.outb(DATA_PORT_0, l);
     cpu.outb(DATA_PORT_0, h);
-}
-
-pub fn set_handler(func: ?*const fn () void) void {
     handler = func;
 }
 

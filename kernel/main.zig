@@ -4,6 +4,7 @@ const klog = @import("utils/klog.zig");
 const log = @import("utils/klog.zig").Logger;
 
 const mm = @import("mm/index.zig");
+const timer_driver = @import("drivers/timer.zig");
 // const proc = @import("proc/manager.zig");
 
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
@@ -18,39 +19,20 @@ comptime {
     _ = arch.boot;
 }
 
-fn thread_b() void {
-    log.info("Thread B started!", .{});
-    log.println("- Thread B exited with code 0", .{});
-    sys_exit(0);
-    while(true) {
-        var i: usize = 0;
-        while(i < 10000):(i += 1) {
-            log.println("b", .{});
-        }
-    }
-}
-
-fn thread_a() void {
-    log.info("Starting Thread A", .{});
-    while(true) asm volatile("hlt");
-}
-
 export fn kernel_main() noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
 
     log.info("Enabling Interrupts...", .{});
     arch.interrupts.init();
+    arch.timer.init(100, &timer_driver.handler);
     log.ok("Interrupts enabled! ", .{});
     
-    arch.timer.init(100);
-
-    map_video_address();
-
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
 
+    map_video_address();
     while (true) arch.cpu.idle();
 }
 
