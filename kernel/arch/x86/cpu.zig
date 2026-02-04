@@ -1,3 +1,5 @@
+const sys = @import("sys/entry.zig");
+
 const MSR_EFER = 0xC0000080;
 const MSR_STAR = 0xC0000081;
 const MSR_LSTAR = 0xC0000082;
@@ -78,7 +80,8 @@ pub fn io_wait() void {
     outb(0x80, 0);
 }
 
-pub fn enable_syscalls(syscall_handler_addr: u64) void {
+pub fn enable_syscalls() void {
+    const syscall_handler_addr: u64 = @intFromPtr(&sys.syscall_entry);
     var efer = rdmsr(MSR_EFER);
     efer |= 1;
     wrmsr(MSR_EFER, efer);
