@@ -9,8 +9,20 @@ pub const Logger = struct {
         screen.print("\n");
     }
 
+    pub fn debug(comptime fmt: []const u8, args: anytype) void {
+        printHeader("INFO", video.Color.LightGray);
+        formatPrint(fmt, args);
+        screen.print("\n");
+    }
+
     pub fn ok(comptime fmt: []const u8, args: anytype) void {
         printHeader(" OK ", video.Color.Green);
+        formatPrint(fmt, args);
+        screen.print("\n");
+    }
+
+    pub fn spec(comptime fmt: []const u8, args: anytype) void {
+        printHeader("TEST", video.Color.Blue);
         formatPrint(fmt, args);
         screen.print("\n");
     }
