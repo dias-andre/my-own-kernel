@@ -111,7 +111,7 @@ fn generic_to_arch_flags(generic: u64) usize {
     // }
 
     if ((generic & Flags.MMIO) != 0) {
-        arch_flags |= (PAGE_CACHE_DISABLE | PAGE_WRITE_THROUGH);
+        arch_flags |= (PAGE_CACHE_DISABLE | PAGE_WRITE_THROUGH | PAGE_RW);
     }
 
     return arch_flags;
