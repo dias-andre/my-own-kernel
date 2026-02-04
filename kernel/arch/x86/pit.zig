@@ -1,5 +1,5 @@
-const cpu = @import("cpu.zig");
-const pic = @import("pic.zig");
+const cpu = @import("cpu/cpu.zig");
+const pic = @import("interrupts/pic.zig");
 
 const BASE_FREQUENCY = 1193180;
 const COMMAND_PORT = 0x43;

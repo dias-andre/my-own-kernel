@@ -1,5 +1,4 @@
 const tss_mod = @import("tss.zig");
-const log = @import("../../utils/klog.zig").Logger;
 
 const GdtEntry = packed struct(u64) {
     limit_low: u16 = 0, // bits 0-15
@@ -45,32 +44,17 @@ var gdt_entries = [_]GdtEntry{
     // TODO: User Code, User Data, TSS
 
     // User Data
-    .{
-        .present = true,
-        .descriptor_type = true,
-        .executable = false,
-        .rw = true,
-        .long_mode = false,
-        .dpl = 3
-    },
+    .{ .present = true, .descriptor_type = true, .executable = false, .rw = true, .long_mode = false, .dpl = 3 },
 
     // User Code,
-    .{
-        .present = true,
-        .descriptor_type = true,
-        .executable = true,
-        .rw = true,
-        .long_mode = true,
-        .dpl = 3
-    },
+    .{ .present = true, .descriptor_type = true, .executable = true, .rw = true, .long_mode = true, .dpl = 3 },
 
     .{},
 
-    .{}
+    .{},
 };
 
 pub fn init() void {
-    log.info("[GDT] Loading new GDT.", .{});
     const tss_base = @intFromPtr(&tss_mod.tss);
     const tss_limit = @sizeOf(tss_mod.TaskStateSegment);
 
@@ -92,14 +76,12 @@ pub fn init() void {
         \\ 1:
         :
         : [ptr] "r" (&gdt_ptr),
-        : .{ .memory = true }
-    );
-    asm volatile(
+        : .{ .memory = true });
+    asm volatile (
         \\ ltr %ax
         :
-        : [selector] "{ax}" (@as(u16, 0x28))
+        : [selector] "{ax}" (@as(u16, 0x28)),
     );
-    log.ok("[GDT] New GDT loaded successfully!", .{});
 }
 
 fn setTssEntry(index: usize, base: u64, limit: u64) void {

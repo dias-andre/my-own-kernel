@@ -1,4 +1,4 @@
-const sys = @import("sys/entry.zig");
+const sys = @import("../sys/entry.zig");
 
 const MSR_EFER = 0xC0000080;
 const MSR_STAR = 0xC0000081;

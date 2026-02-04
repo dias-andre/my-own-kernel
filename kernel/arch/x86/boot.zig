@@ -1,8 +1,8 @@
 const multiboot = @import("multiboot.zig");
 const mem = @import("mem/memory.zig");
-const gdt = @import("gdt.zig");
-const idt = @import("idt.zig");
-const cpu = @import("cpu.zig");
+const gdt = @import("cpu/gdt.zig");
+const idt = @import("interrupts/idt.zig");
+const cpu = @import("cpu/cpu.zig");
 
 extern fn kernel_main() noreturn;
 

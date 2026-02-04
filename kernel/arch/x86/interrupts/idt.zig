@@ -1,15 +1,13 @@
-const vga = @import("vga.zig");
-const vmm = @import("../../mm/vmm.zig");
+const vga = @import("../vga.zig");
 
-const cpu = @import("cpu.zig");
+const cpu = @import("../cpu/cpu.zig");
 const pic = @import("pic.zig");
 
-const pit = @import("pit.zig");
-const kbd = @import("../../drivers/keyboard.zig");
+const pit = @import("../pit.zig");
 
 const PanicWriter = vga.PanicWriter;
 
-const interrupts = @import("isr_stub_table.zig");
+const isr_table = @import("isr_stub_table.zig");
 
 const IdtEntry = packed struct {
     offset_low: u16,
@@ -41,7 +39,7 @@ var idt: [256]IdtEntry align(16) = undefined;
 
 pub fn init() void {
     for (0..256) |i| {
-        idt[i].set(interrupts.isr_stub_table[i]);
+        idt[i].set(isr_table.isr_stub_table[i]);
     }
     const idt_ptr = IdtPtr{
         .limit = @sizeOf(@TypeOf(idt)) - 1,
@@ -55,7 +53,7 @@ pub fn init() void {
 
 }
 
-export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
+export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
     switch (ctx.int_num) {
         14 => {
             pageFaultHandler(ctx);
@@ -65,7 +63,6 @@ export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
             pit.handle_irq();
         },
         33 => {
-          kbd.handle_irq();
           pic.sendEOI(1);
         },
         else => {
@@ -88,7 +85,7 @@ export fn isr_handler_zig(ctx: *interrupts.TrapFrame) void {
     }
 }
 
-pub fn pageFaultHandler(ctx: *interrupts.TrapFrame) void {
+pub fn pageFaultHandler(ctx: *isr_table.TrapFrame) void {
     const fault_addr = cpu.read_cr2();
     PanicWriter.cleanError();
 
