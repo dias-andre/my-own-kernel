@@ -11,15 +11,38 @@ pub const cpu = impl.cpu;
 pub const paging = impl.paging;
 pub const memory = impl.memory;
 pub const boot = impl.boot;
+pub const interrupts = impl.interrupts;
+pub const timer = impl.timer;
 
-// comptime {
-//     const missing_error = "Architecture missing: ";
+comptime {
+    const missing_error = "Architecture missing:";
 
-//     if (!@hasDecl(impl, "switch_context")) {
-//         @compileError(missing_error ++ "switch_context(prev: *usize, next: usize) void");
-//     }
+    if (!@hasDecl(cpu, "idle")) {
+        @compileError(missing_error ++ "cpu.idle() void");
+    }
 
-//     if (!@hasDecl(impl, "init_user_mode")) {
-//         @compileError(missing_error ++ "init_user_mode(...)");
-//     }
-// }
+    if (!@hasDecl(cpu, "enable_interrupts")) {
+        @compileError(missing_error ++ "cpu.enable_interrupts() void");
+    }
+
+    if (!@hasDecl(cpu, "disable_interrupts")) {
+        @compileError(missing_error ++ "cpu.disable_interrupts() void");
+    }
+
+    if (!@hasDecl(cpu, "enable_syscalls")) {
+        @compileError(missing_error ++ "cpu.enable_syscalls() void");
+    }
+
+    // interrupts
+    if (!@hasDecl(interrupts, "init")) {
+        @compileError(missing_error ++ "interrupts.init() void");
+    }
+
+    //timer
+
+    if (!@hasDecl(timer, "init")) {
+        @compileError(missing_error ++ "timer.init(freq: u32) void");
+    }
+}
+
+
