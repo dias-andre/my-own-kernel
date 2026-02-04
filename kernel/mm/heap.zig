@@ -21,17 +21,21 @@ const HEADER_SIZE = alignUp(@sizeOf(BlockHeader), 16);
 
 pub const Heap = struct {
     head: *BlockHeader,
-    pml4_phys: u64,
+    page_dir: u64,
     end_addr: usize,
 
-    pub fn init(start: usize, initial_size: usize, pml4_phys: u64, vmmFlags: usize) !Heap {
+    pub fn init(start: usize, initial_size: usize, page_dir: u64, vmmFlags: usize) !Heap {
         var current_virt = start;
         const end_virt = start + initial_size;
 
-        while (current_virt < end_virt) : (current_virt += 4096) {
+        log.debug("Heap.init called with: start={} , size={}", .{ start, initial_size });
+        // while(true) arch.cpu.idle();
+        while (current_virt < end_virt) : (current_virt += arch.memory.PAGE_SIZE) {
             const phys = pmm.allocate_page() orelse return error.OutOfMemory;
-
-            try arch.paging.map(pml4_phys, current_virt, phys, vmmFlags);
+            if((phys % arch.memory.PAGE_SIZE) != 0) {
+                @panic("HEAP PANIC: Physical address not aligned!");
+            }
+            try arch.paging.map(page_dir, current_virt, phys, vmmFlags);
         }
 
         const first_block: *BlockHeader = @ptrFromInt(start);
@@ -40,7 +44,7 @@ pub const Heap = struct {
         first_block.free = true;
         first_block.magic = 0xc0ffee;
 
-        return Heap{ .head = first_block, .pml4_phys = pml4_phys, .end_addr = end_virt };
+        return Heap{ .head = first_block, .page_dir = page_dir, .end_addr = end_virt };
     }
 
     pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
@@ -145,21 +149,30 @@ pub const Heap = struct {
     }
 
     fn implResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-        _ = ctx; _ = buf; _ = buf_align; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = buf;
+        _ = buf_align;
+        _ = new_len;
+        _ = ret_addr;
         return false;
     }
 
     fn implFree(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
         var self: *Heap = @ptrCast(@alignCast(ctx));
-        _ = buf_align; _ = ret_addr;
+        _ = buf_align;
+        _ = ret_addr;
 
         self.free(buf.ptr) catch |err| {
             log.failed("Allocator Free Error: {}", .{err});
         };
     }
-    
+
     fn implRemap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
-        _ = ctx; _ = memory; _ = alignment; _ = new_len; _ = ret_addr;
+        _ = ctx;
+        _ = memory;
+        _ = alignment;
+        _ = new_len;
+        _ = ret_addr;
         return null;
     }
 };

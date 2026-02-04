@@ -12,17 +12,32 @@ var total_ram: usize = undefined;
 
 pub fn init(kernel_end_addr: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
-    total_ram = pmm.init(kernel_end_addr);
-    vmm.init(total_ram);
+    pmm.init(kernel_end_addr);
+    log.spec("Testing PMM allocation...", .{});
+    
+    const p1 = pmm.allocate_page();
+    const p2 = pmm.allocate_page();
+    if (p1) |addr| log.debug("PMM Alloc 1: {}", .{addr})
+        else log.failed("PMM Alloc 1 FAILED (NULL)", .{});
+    if (p2) |addr| log.debug("PMM Alloc 2: {}", .{addr})
+        else log.failed("PMM Alloc 2 FAILED (NULL)", .{});
+
+    pmm.free_page(p1.?);
+    pmm.free_page(p2.?);
+    log.ok("Physical Page Allocator working!", .{});
+    arch.paging.set_physical_allocator(&pmm.allocate_page);
+    vmm.init();
+    kernel_page_directory = vmm.kernel_directory;
+    log.debug("Kernel Page Directory: {}", .{kernel_page_directory});
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});
 }
 
 fn init_kernel_heap() void {
     log.info("Mapping kernel heap", .{});
-    log.println("-> Initial size: 1MB", .{});
     const HEAP_START: usize = 0x02000000;
-    const HEAP_INITIAL_SIZE: usize = 1024 * 1024;
+    const HEAP_INITIAL_SIZE: usize = 4096;
+    log.debug("Before init: start={}, size={}", .{HEAP_START, HEAP_INITIAL_SIZE});
     kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, vmm.Flags.DATA_KERNEL) catch {
         log.failed("Failed to initialize Kernel Heap", .{});
         while(true) arch.cpu.idle();
