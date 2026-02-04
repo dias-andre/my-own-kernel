@@ -1,6 +1,7 @@
 const arch = @import("../arch/root.zig");
 const pmm = @import("pmm.zig");
 const log = @import("../utils/klog.zig").Logger;
+const Flags = @import("index.zig").Flags;
 
 pub var is_paging_enabled: bool = false;
 pub var kernel_directory: usize = undefined;
@@ -58,14 +59,3 @@ fn map_range(root: usize, virt_start: usize, phys_start: usize, size: usize, fla
     }
 }
 
-pub const Flags = struct {
-    pub const READABLE: usize = 1 << 0;
-    pub const WRITABLE: usize = 1 << 1;
-    pub const EXECUTABLE: usize = 1 << 2;
-    pub const USER: usize = 1 << 3;
-    pub const MMIO: usize = 1 << 4;
-
-    pub const CODE_USER = READABLE | EXECUTABLE | USER;
-    pub const DATA_USER = READABLE | WRITABLE | USER;
-    pub const DATA_KERNEL = WRITABLE;
-};

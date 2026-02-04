@@ -38,7 +38,7 @@ fn init_kernel_heap() void {
     const HEAP_START: usize = 0x02000000;
     const HEAP_INITIAL_SIZE: usize = 4096;
     log.debug("Before init: start={}, size={}", .{HEAP_START, HEAP_INITIAL_SIZE});
-    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, vmm.Flags.DATA_KERNEL) catch {
+    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, Flags.DATA_KERNEL) catch {
         log.failed("Failed to initialize Kernel Heap", .{});
         while(true) arch.cpu.idle();
     };
@@ -52,3 +52,15 @@ pub fn kernel_allocator() std.mem.Allocator {
 pub fn kernel_pages() u64 {
     return kernel_page_directory;
 }
+
+pub const Flags = struct {
+    pub const READABLE: usize = 1 << 0;
+    pub const WRITABLE: usize = 1 << 1;
+    pub const EXECUTABLE: usize = 1 << 2;
+    pub const USER: usize = 1 << 3;
+    pub const MMIO: usize = 1 << 4;
+
+    pub const CODE_USER = READABLE | EXECUTABLE | USER;
+    pub const DATA_USER = READABLE | WRITABLE | USER;
+    pub const DATA_KERNEL = WRITABLE;
+};
