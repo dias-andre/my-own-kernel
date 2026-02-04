@@ -2,7 +2,6 @@ const arch = @import("../arch/root.zig");
 const ctx = @import("context.zig");
 const kmem = @import("../mm/index.zig");
 const Thread = @import("thread.zig").Thread;
-const pit = @import("../drivers/pit.zig");
 
 var current_thread: ?*Thread = null;
 
