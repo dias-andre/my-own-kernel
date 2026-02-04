@@ -1,6 +1,6 @@
 section .text
 bits 32
-extern kernel_main
+extern kernel_boot
 
 global start
 
@@ -107,7 +107,7 @@ kernel_entry:
   mov edi, [mb_addr_store]
   mov esi, [mb_magic_store]
 
-  call kernel_main
+  call kernel_boot
   hlt
 
 section .bss

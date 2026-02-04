@@ -1,4 +1,4 @@
-const vmm = @import("vmm.zig");
+const arch = @import("../arch/root.zig");
 const pmm = @import("pmm.zig");
 const log = @import("../utils/klog.zig").Logger;
 const std = @import("std");
@@ -27,12 +27,11 @@ pub const Heap = struct {
     pub fn init(start: usize, initial_size: usize, pml4_phys: u64, vmmFlags: usize) !Heap {
         var current_virt = start;
         const end_virt = start + initial_size;
-        const pml4: *vmm.PageTable = @ptrFromInt(pml4_phys);
 
         while (current_virt < end_virt) : (current_virt += 4096) {
-            const phys = try pmm.allocate_page();
+            const phys = pmm.allocate_page() orelse return error.OutOfMemory;
 
-            try vmm.map_page(pml4, current_virt, phys, vmmFlags);
+            try arch.paging.map(pml4_phys, current_virt, phys, vmmFlags);
         }
 
         const first_block: *BlockHeader = @ptrFromInt(start);

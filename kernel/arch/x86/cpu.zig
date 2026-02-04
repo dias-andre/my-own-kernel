@@ -11,15 +11,15 @@ pub fn read_cr2() usize {
     return value;
 }
 
-pub fn halt() void {
+pub fn idle() void {
     asm volatile ("hlt");
 }
 
-pub fn cli() void {
+pub fn disable_interrupts() void {
     asm volatile("cli");
 }
 
-pub fn sti() void {
+pub fn enable_interrupts() void {
     asm volatile("sti");
 }
 

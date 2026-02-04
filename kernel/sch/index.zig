@@ -1,3 +1,4 @@
+const arch = @import("../arch/root.zig");
 const ctx = @import("context.zig");
 const kmem = @import("../mm/index.zig");
 const Thread = @import("thread.zig").Thread;
@@ -49,9 +50,9 @@ pub fn schedule() void {
 
             if (prev_proc != next_proc) {
                 if (next_proc) |proc| {
-                    write_cr3(proc.page_directory);
+                    arch.paging.load_page_directory(proc.page_directory);
                 } else {
-                    write_cr3(kmem.kernel_pml4());
+                    arch.paging.load_page_directory(kmem.kernel_pages());
                 }
             }
 
