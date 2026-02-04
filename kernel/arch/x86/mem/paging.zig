@@ -1,4 +1,5 @@
 const memory = @import("memory.zig");
+const log = @import("../../../utils/klog.zig").Logger;
 
 // ==========================================
 // CONSTANTES DE PAGINAÇÃO (FLAGS)
@@ -24,30 +25,44 @@ pub const PageTable = extern struct {
     entries: [512]u64 align(4096),
 
     pub fn clear(self: *PageTable) void {
-        @memset(&self.entries, 0);
+        var i: usize = 0;
+        while (i < 512) : (i += 1) {
+            self.entries[i] = 0;
+        }
     }
 };
 
 pub var is_paging_ready: bool = false;
-var alloc_phys_page: AllocatorFn = undefined;
+var alloc_phys_page: ?AllocatorFn = null;
 
 const AllocatorFn = *const fn () ?usize;
 
 pub fn map(page_directory: usize, virt: usize, phys: usize, flags: usize) !void {
+    if (alloc_phys_page == null) {
+        @panic("CRITICAL: alloc_phys_page IS NULL! set_physical_allocator failed.");
+    }
     const page_table: *PageTable = @ptrFromInt(page_directory);
     try map_page(page_table, virt, phys, generic_to_arch_flags(flags));
+}
+
+pub fn set_paging_enabled() void {
+    is_paging_ready = true;
 }
 
 pub fn set_physical_allocator(alloc: AllocatorFn) void {
     alloc_phys_page = alloc;
 }
 
-pub fn load_page_directory(addr: usize) void {
-    const pageTable: *PageTable = @ptrFromInt(addr);
-    load_pml4(pageTable);
+pub fn load_page_directory(virt_addr: usize) void {
+    const phys_addr = memory.virt_to_phys(virt_addr);
+
+    asm volatile ("mov %[addr], %%cr3"
+        :
+        : [addr] "r" (phys_addr),
+        : .{ .memory = true });
 }
 
-pub fn clear_page_directory(addr: usize) void {
+pub fn init_page_directory(addr: usize) void {
     const pageTable: *PageTable = @ptrFromInt(addr);
     pageTable.clear();
 }
@@ -68,16 +83,16 @@ fn get_pt_index(virt_addr: usize) usize {
     return (virt_addr >> 12) & 0x1ff;
 }
 
-const Flags = struct {
-    pub const READABLE: u32 = 1 << 0;
-    pub const WRITABLE: u32 = 1 << 1;
-    pub const EXECUTABLE: u32 = 1 << 2;
-    pub const USER: u32 = 1 << 3;
-    pub const MMIO: u32 = 1 << 4;
+pub const Flags = struct {
+    pub const READABLE: usize = 1 << 0;
+    pub const WRITABLE: usize = 1 << 1;
+    pub const EXECUTABLE: usize = 1 << 2;
+    pub const USER: usize = 1 << 3;
+    pub const MMIO: usize = 1 << 4;
 
     pub const CODE_USER = READABLE | EXECUTABLE | USER;
-    pub const DATA_USER = READABLE | WRITABLE | USER;
-    pub const DATA_KERNEL = READABLE | WRITABLE;
+    pub const DATA_USER = WRITABLE | USER;
+    pub const DATA_KERNEL = WRITABLE;
 };
 
 fn generic_to_arch_flags(generic: u64) usize {
@@ -91,9 +106,9 @@ fn generic_to_arch_flags(generic: u64) usize {
         arch_flags |= PAGE_USER;
     }
 
-    if ((generic & Flags.EXECUTABLE) == 0) {
-        arch_flags |= PAGE_NX;
-    }
+    // if ((generic & Flags.EXECUTABLE) == 0) {
+    //     arch_flags |= PAGE_NX;
+    // }
 
     if ((generic & Flags.MMIO) != 0) {
         arch_flags |= (PAGE_CACHE_DISABLE | PAGE_WRITE_THROUGH);
@@ -131,13 +146,16 @@ fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usize) 
 
 fn get_next_table(entry: *u64) !*PageTable {
     const addr = entry.*;
+    const allocator = alloc_phys_page orelse {
+        @panic("PAGING ERROR: Paging allocator not configured!");
+    };
 
     if ((addr & PAGE_PRESENT) == 0) {
-        const new_table_phys = alloc_phys_page() orelse return error.OutOfMemory;
+        const new_table_phys = allocator() orelse return error.OutOfMemory;
         const new_table_ptr: *PageTable = @ptrFromInt(new_table_phys);
-        new_table_ptr.clear();
 
         entry.* = new_table_phys | PAGE_PRESENT | PAGE_RW;
+        new_table_ptr.clear();
         return new_table_ptr;
     }
 
@@ -151,16 +169,11 @@ fn get_next_table(entry: *u64) !*PageTable {
     }
 }
 
-fn load_pml4(pml4: *PageTable) void {
-    const addr = @intFromPtr(pml4);
-    asm volatile ("mov %[addr], %%cr3"
-        :
-        : [addr] "r" (addr),
-        : .{ .memory = true });
-}
-
 pub fn clone_pml4(parent_pml4_phys: usize) !usize {
-    const child_pml4_phys = alloc_phys_page();
+    const allocator = alloc_phys_page orelse {
+        @panic("PAGING ERROR: Paging allocator not configured!");
+    };
+    const child_pml4_phys = allocator() orelse return error.OutOfMemory;
     const parent_table = memory.phys_to_ptr(PageTable, parent_pml4_phys);
     const child_table = memory.phys_to_ptr(PageTable, child_pml4_phys);
 
