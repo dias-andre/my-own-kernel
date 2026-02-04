@@ -39,32 +39,31 @@ export fn kernel_main() noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
 
-    map_video_address();
-    // proc.init();
+    log.info("Enabling Interrupts...", .{});
+    arch.interrupts.init();
+    log.ok("Interrupts enabled! ", .{});
+    
+    arch.timer.init(100);
 
-    // log.info("Enabling Interrupts...", .{});
-    // arch.cpu.enable_interrupts();
-    // log.ok("Interrupts enabled! ", .{});
+    map_video_address();
 
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
 
-    
     while (true) arch.cpu.idle();
 }
 
 fn map_video_address() void {
     const vga_physical = 0xb8000;
-    const vga_virtual = 0xC0000000 + 0xb8000;
+    const vga_virtual = 0xC0000000 + vga_physical;
     log.debug("Mapping VGA to a virtual address", .{});
-    arch.paging.map(mm.kernel_pages(), vga_virtual, vga_physical, mm.vmm.Flags.DATA_KERNEL) catch {
+    arch.paging.map(mm.kernel_pages(), vga_virtual, vga_physical, mm.Flags.DATA_KERNEL) catch {
         log.failed("Failed to map physical address {} to virtual address {}", .{vga_physical, vga_virtual});
         while(true) arch.cpu.idle();
     };
     klog.screen.video_address = vga_virtual;
-    const address: *u64 = @ptrFromInt(vga_virtual);
-    log.ok("VGA mapped to {}", .{address});
+    log.ok("VGA mapped to {}", .{@as(*u64, @ptrFromInt(vga_virtual))});
 }
 
 fn testFaultHandler() void {
