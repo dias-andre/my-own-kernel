@@ -1,4 +1,4 @@
-const kmem = @import("../mm/index.zig");
+const kmem = @import("../mm/root.zig");
 const log = @import("../utils/klog.zig").Logger;
 const sch = @import("../sch/index.zig");
 
@@ -10,21 +10,27 @@ var next_pid: usize = undefined;
 var next_tid: usize = undefined;
 
 fn idle_thread() void {
-    while(true) {
-        asm volatile("hlt");
+    while (true) {
+        asm volatile ("hlt");
     }
 }
 
-pub fn get_kernel_process() *Process { return kernel_process; }
-pub fn get_new_pid() usize { return @atomicRmw(usize, &next_pid, .Add, 1, .monotonic); }
-pub fn get_new_tid() usize { return @atomicRmw(usize, &next_tid, .Add, 1, .monotonic); }
+pub fn get_kernel_process() *Process {
+    return kernel_process;
+}
+pub fn get_new_pid() usize {
+    return @atomicRmw(usize, &next_pid, .Add, 1, .monotonic);
+}
+pub fn get_new_tid() usize {
+    return @atomicRmw(usize, &next_tid, .Add, 1, .monotonic);
+}
 
 pub fn init() void {
     log.info("Starting Process Manager...", .{});
     next_pid = 0;
     next_pid = 0;
 
-    kernel_process = Process.create(null,"kernel_main", kmem.kernel_pml4(), kmem.kernel_allocator()) catch |err| {
+    kernel_process = Process.create(null, "kernel_main", kmem.kernel_pml4(), kmem.kernel_allocator()) catch |err| {
         log.failed("Failed to create kernel process. Error: {}", .{err});
         while (true) asm volatile ("hlt");
     };
@@ -44,11 +50,11 @@ pub fn spawn(entry_point: usize, is_user: bool, name: []const u8) !usize {
     _ = is_user;
     const current_thread = sch.get_current_thread();
     const parent_proc = if (current_thread) |t| t.process.? else kernel_process;
-    const pml4_phys = try kmem.create_pml4();
+    const pml4_phys = try kmem.alloc_page();
 
     const new_process = try Process.create(parent_proc, name, pml4_phys, kmem.kernel_allocator());
     new_process.id = get_new_pid();
-    
+
     parent_proc.addChild(new_process);
     _ = try start_thread(new_process, entry_point);
     return new_process.id;

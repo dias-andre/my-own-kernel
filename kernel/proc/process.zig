@@ -1,5 +1,5 @@
 const manager = @import("manager.zig");
-const mem = @import("../mm/index.zig");
+const mem = @import("../mm/root.zig");
 const sch = @import("../sch/index.zig");
 const Thread = @import("../sch/thread.zig").Thread;
 const std = @import("std");
@@ -115,14 +115,4 @@ pub const Process = struct {
     };
 };
 
-pub fn fork(parent: *Process) !usize {
-    const pml4_clone = try mem.clone_pml4(parent.page_directory);
-
-    const new_process = try manager.create_process(parent.name, pml4_clone);
-    new_process.parent = parent;
-    new_process.next_sibling = parent.child_list_head;
-    parent.child_list_head = new_process;
-
-    return new_process.id;
-    // TODO: thread clone
-}
+// TODO: fork

@@ -3,7 +3,7 @@ const arch = @import("arch/root.zig");
 const klog = @import("utils/klog.zig");
 const log = @import("utils/klog.zig").Logger;
 
-const mm = @import("mm/index.zig");
+const mm = @import("mm/root.zig");
 const timer_driver = @import("drivers/timer.zig");
 // const proc = @import("proc/manager.zig");
 
@@ -27,7 +27,7 @@ export fn kernel_main() noreturn {
     arch.interrupts.init();
     arch.timer.init(100, &timer_driver.handler);
     log.ok("Interrupts enabled! ", .{});
-    
+
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
@@ -41,8 +41,8 @@ fn map_video_address() void {
     const vga_virtual = 0xC0000000 + vga_physical;
     log.debug("Mapping VGA to a virtual address", .{});
     arch.paging.map(mm.kernel_pages(), vga_virtual, vga_physical, mm.Flags.DATA_KERNEL) catch {
-        log.failed("Failed to map physical address {} to virtual address {}", .{vga_physical, vga_virtual});
-        while(true) arch.cpu.idle();
+        log.failed("Failed to map physical address {} to virtual address {}", .{ vga_physical, vga_virtual });
+        while (true) arch.cpu.idle();
     };
     klog.screen.video_address = vga_virtual;
     log.ok("VGA mapped to {}", .{@as(*u64, @ptrFromInt(vga_virtual))});

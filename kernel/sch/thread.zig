@@ -1,7 +1,7 @@
 const Process = @import("../proc/process.zig").Process;
 const ctx = @import("context.zig");
 const std = @import("std");
-const kmem = @import("../mm/index.zig");
+const kmem = @import("../mm/root.zig");
 
 pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
     reason: []const u8,
@@ -15,7 +15,7 @@ pub const Thread = struct {
     id: usize,
     rsp: usize,
     stack_base: usize,
-    
+
     next: ?*Thread,
     state: ThreadState,
 
@@ -62,8 +62,8 @@ pub const Thread = struct {
 
     pub fn create(allocator: std.mem.Allocator) !*Thread {
         const new_thread = try allocator.create(Thread);
-        @memset(std.mem.asBytes(new_thread), 0 );
-        
+        @memset(std.mem.asBytes(new_thread), 0);
+
         const phys_stack = try kmem.alloc_physical_page();
         new_thread.stack_base = kmem.phys_to_virt(phys_stack);
         new_thread.id = 0;
@@ -73,7 +73,7 @@ pub const Thread = struct {
     }
 
     pub fn destroy(self: *Thread, allocator: std.mem.Allocator) void {
-        if(self.process) |owner| {
+        if (self.process) |owner| {
             owner.ref_count = @atomicRmw(usize, &owner.ref_count, .Sub, 1, .monotonic);
         }
         kmem.free_physical_page(kmem.virt_to_phys(self.stack_base));

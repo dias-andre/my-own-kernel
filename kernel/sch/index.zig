@@ -1,6 +1,6 @@
 const arch = @import("../arch/root.zig");
 const ctx = @import("context.zig");
-const kmem = @import("../mm/index.zig");
+const kmem = @import("../mm/root.zig");
 const Thread = @import("thread.zig").Thread;
 
 var current_thread: ?*Thread = null;
@@ -64,12 +64,4 @@ pub fn schedule() void {
 
 pub fn get_current_thread() ?*Thread {
     return current_thread;
-}
-
-fn write_cr3(pml4_phys: usize) void {
-    asm volatile ("mov %[val], %%cr3"
-        :
-        : [val] "r" (pml4_phys),
-        : .{ .memory = true }
-    );
 }
