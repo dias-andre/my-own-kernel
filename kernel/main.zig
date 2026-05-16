@@ -1,51 +1,52 @@
-const klog = @import("utils/klog.zig");
-const mb = @import("multiboot.zig");
-const mm = @import("mm/index.zig");
-const gdt = @import("arch/x86/gdt.zig");
-const idt = @import("arch/x86/idt.zig");
-const pic = @import("arch/x86/pic.zig");
-const cpu = @import("arch/x86/cpu.zig");
-const pit = @import("drivers/pit.zig");
-const stubs = @import("utils/libc_stubs.zig");
+const arch = @import("arch/root.zig");
 
-const vmm = @import("mm/vmm.zig");
+const klog = @import("utils/klog.zig");
 const log = @import("utils/klog.zig").Logger;
+
+const mm = @import("mm/root.zig");
+const timer_driver = @import("drivers/timer.zig");
+// const proc = @import("proc/manager.zig");
+
+const sys_exit = @import("sys/sys_exit.zig").sys_exit;
+
+const stubs = @import("utils/libc_stubs.zig");
 
 extern var _start: u8;
 extern var _end: u8;
 
-export fn kernel_main(pointer: u64, magic: u64) callconv(.c) noreturn {
+comptime {
     _ = stubs;
-    log.info("The execution reached kernel main", .{});
-    // get multiboot info
-    const mb_info = mb.init(pointer, magic);
-    const kernel_end_addr = @intFromPtr(&_end);
+    _ = arch.boot;
+}
 
-    // starts memory management subsystem
-    mm.init(mb_info, kernel_end_addr);
-    gdt.init();
-    idt.init();
+export fn kernel_main() noreturn {
+    klog.init();
+    log.info("The execution reached kernel main", .{});
+    mm.init(@intFromPtr(&_end));
+
+    log.info("Enabling Interrupts...", .{});
+    arch.interrupts.init();
+    arch.timer.init(100, &timer_driver.handler);
+    log.ok("Interrupts enabled! ", .{});
+
+    log.info("Enabling System calls...", .{});
+    arch.cpu.enable_syscalls();
+    log.ok("System calls enabled! ", .{});
 
     map_video_address();
-
-    pic.remap();
-    pit.init(100);
-    cpu.sti();
-
-    while (true) cpu.halt();
+    while (true) arch.cpu.idle();
 }
 
 fn map_video_address() void {
     const vga_physical = 0xb8000;
-    const vga_virtual = 0xC0000000 + 0xb8000;
-    log.info("Mapping VGA to a virtual address", .{});
-    vmm.map_page(vmm.kernel_pml4, vga_virtual, vga_physical, vmm.PAGE_PRESENT | mm.vmm.PAGE_RW) catch {
-        log.failed("Failed to map physical address {} to virtual address {}", .{vga_physical, vga_virtual});
-        while(true) asm volatile("hlt");
+    const vga_virtual = 0xC0000000 + vga_physical;
+    log.debug("Mapping VGA to a virtual address", .{});
+    arch.paging.map(mm.kernel_pages(), vga_virtual, vga_physical, mm.Flags.DATA_KERNEL) catch {
+        log.failed("Failed to map physical address {} to virtual address {}", .{ vga_physical, vga_virtual });
+        while (true) arch.cpu.idle();
     };
     klog.screen.video_address = vga_virtual;
-    const address: *u64 = @ptrFromInt(vga_virtual);
-    log.ok("VGA mapped to {}", .{address});
+    log.ok("VGA mapped to {}", .{@as(*u64, @ptrFromInt(vga_virtual))});
 }
 
 fn testFaultHandler() void {

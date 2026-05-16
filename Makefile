@@ -72,10 +72,13 @@ $(OBJ_ZIG_MAIN): $(KERNEL_SOURCES)
 # --- UTILITIES ---
 
 run: $(ISO_FILE)
-	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE)
+	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio
 
 debug: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int
+
+# run-serial: $(ISO_FILE)
+# 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio -display default
 
 # Shows which files Make is seeing (Makefile Debug)
 info:
