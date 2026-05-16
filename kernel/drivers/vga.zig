@@ -1,3 +1,5 @@
+const lib = @import("../lib.zig");
+
 pub const Color = enum(u8) {
     Black = 0,
     Blue = 1,
@@ -23,6 +25,16 @@ fn vgaEntry(char: u8, color: u8) u16 {
     return (co << 8) | c;
 }
 
+fn writeChar(ctx: *anyopaque, data: u8) void {
+    const vga: *VGA = @ptrCast(@alignCast(ctx));
+    vga.putChar(data);
+}
+
+fn writeStr(ctx: *anyopaque, data: []const u8) void {
+    const vga: *VGA = @ptrCast(@alignCast(ctx));
+    vga.print(data);
+}
+
 pub const VGA = struct {
     row: usize = 0,
     column: usize = 0,
@@ -40,6 +52,13 @@ pub const VGA = struct {
             .width = width,
             .height = height,
         };
+    }
+
+    pub fn writer(self: *VGA) lib.Io.Writer {
+        return lib.Io.Writer{ .ptr = self, .vtable = &.{
+            .write = &writeStr,
+            .put = &writeChar,
+        } };
     }
 
     pub fn setColor(self: *VGA, fg: Color, bg: Color) void {
