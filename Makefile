@@ -23,8 +23,7 @@ OBJ_ASM_MULTI = $(BUILD_DIR)/multiboot_header.o
 OBJ_ZIG_MAIN  = $(BUILD_DIR)/main.o
 
 # Final Binary
-# KERNEL_ELF = $(BUILD_DIR)/kernel.elf
-KERNEL_ELF = zig-out/bin/kernel.elf
+KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 ISO_FILE = kernel.iso
 LINKER_SCRIPT = linker.ld
 
@@ -42,10 +41,9 @@ $(ISO_FILE): $(KERNEL_ELF)
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
 # 2. Linking (Depends on ASM and Zig Objects)
-$(KERNEL_ELF): $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(LINKER_SCRIPT)
+$(KERNEL_ELF): $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN) $(LINKER_SCRIPT)
 	@echo "[LINK] Generating Final Kernel..."
-	# ld -m elf_x86_64 -T $(LINKER_SCRIPT) -o $(KERNEL_ELF) $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN)
-	zig build
+	ld -m elf_x86_64 -T $(LINKER_SCRIPT) -o $(KERNEL_ELF) $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN)
 
 # 3. Assembly Compilation (Starter)
 $(OBJ_ASM_START): $(INIT_KERNEL_FILES)
@@ -88,4 +86,3 @@ clean:
 	rm -rf $(BUILD_DIR)/*
 	rm -f $(ISO_FILE)
 	rm -f $(ISO_DIR)/boot/*.elf
-	rm -r zig-out/
