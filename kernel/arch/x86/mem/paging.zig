@@ -25,9 +25,11 @@ pub const PageTable = extern struct {
     entries: [512]u64 align(4096),
 
     pub fn clear(self: *PageTable) void {
+        var volatile_arr: [*]volatile u64 = @ptrCast(&self.entries);
         var i: usize = 0;
         while (i < 512) : (i += 1) {
-            self.entries[i] = 0;
+            // self.entries[i] = 0;
+            volatile_arr[i] = 0;
         }
     }
 };

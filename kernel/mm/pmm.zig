@@ -39,10 +39,11 @@ pub fn init(kernel_end: usize) void {
     log.println("- Total RAM: {}MB", .{arch.memory.max_ram() / 1024 / 1024});
     log.println("- Bitmap size: {} bytes", .{bitmap_size});
 
+    // @memset
     fill_memory(bitmap, 0xff, bitmap_size);
-
-    for(arch.memory.memory_regions()) |region| {
-        if(region.type == .Free) {
+    log.debug("Memory filled", .{});
+    for (arch.memory.memory_regions()) |region| {
+        if (region.type == .Free) {
             init_region(region.base, region.len);
         }
     }
@@ -74,9 +75,10 @@ fn deinit_region(base: u64, length: u64) void {
 }
 
 fn fill_memory(ptr: [*]u8, value: u8, len: usize) void {
+    var v_ptr: [*]volatile u8 = ptr;
     var i: usize = 0;
     while (i < len) : (i += 1) {
-        ptr[i] = value;
+        v_ptr[i] = value;
     }
 }
 
