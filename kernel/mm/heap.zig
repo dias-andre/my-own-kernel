@@ -3,7 +3,7 @@ const pmm = @import("pmm.zig");
 const log = @import("../utils/klog.zig").Logger;
 const std = @import("std");
 
-pub const BlockHeader = packed struct { size: usize, next: ?*BlockHeader, free: bool, magic: u32 };
+pub const BlockHeader = packed struct { size: usize, next: u64, has_next: bool, free: bool, magic: u32 };
 
 pub fn alignUp(addr: usize, alignment: usize) usize {
     return (addr + alignment - 1) & ~(alignment - 1);
@@ -32,7 +32,7 @@ pub const Heap = struct {
         // while(true) arch.cpu.idle();
         while (current_virt < end_virt) : (current_virt += arch.memory.PAGE_SIZE) {
             const phys = pmm.allocate_page() orelse return error.OutOfMemory;
-            if((phys % arch.memory.PAGE_SIZE) != 0) {
+            if ((phys % arch.memory.PAGE_SIZE) != 0) {
                 @panic("HEAP PANIC: Physical address not aligned!");
             }
             try arch.paging.map(page_dir, current_virt, phys, vmmFlags);
@@ -40,7 +40,8 @@ pub const Heap = struct {
 
         const first_block: *BlockHeader = @ptrFromInt(start);
         first_block.size = initial_size - HEADER_SIZE;
-        first_block.next = null;
+        first_block.next = 0;
+        first_block.has_next = false;
         first_block.free = true;
         first_block.magic = 0xc0ffee;
 
@@ -75,19 +76,21 @@ pub const Heap = struct {
                         const new_block: *BlockHeader = @ptrFromInt(new_block_addr);
                         new_block.size = current.size - total_size - HEADER_SIZE;
                         new_block.free = true;
-                        new_block.next = current.next;
+                        // new_block.next = current.next;
+                        new_block.has_next = current.has_next;
                         new_block.magic = 0xc0ffee;
 
                         current.size = total_size;
-                        current.next = new_block;
+                        current.next = new_block_addr;
+                        current.has_next = true;
                     }
                     current.free = false;
                     return @ptrFromInt(aligned_data);
                 }
             }
 
-            if (current.next) |next_blk| {
-                current = next_blk;
+            if (current.has_next) {
+                current = @ptrFromInt(current.next);
             } else {
                 return error.OutOfMemory;
             }
@@ -100,7 +103,7 @@ pub const Heap = struct {
 
     pub fn free(_: *Heap, ptr: [*]u8) !void {
         const addr = @intFromPtr(ptr);
-        var search_addr = alignDown(addr - HEADER_SIZE, 16);
+        var search_addr = alignDown(addr - @sizeOf(BlockHeader), 16);
         const min_addr = search_addr -| 64;
 
         while (search_addr >= min_addr) : (search_addr -= 16) {
@@ -113,10 +116,12 @@ pub const Heap = struct {
                     if (potential_header.free) {
                         return error.DoubleFree;
                     }
-                    if (potential_header.next) |next_block| {
+                    if (potential_header.has_next) {
+                        const next_block: *BlockHeader = @ptrFromInt(potential_header.next);
                         if (next_block.free) {
                             potential_header.size += next_block.size + HEADER_SIZE;
                             potential_header.next = next_block.next;
+                            potential_header.has_next = true;
                         }
                     }
 
