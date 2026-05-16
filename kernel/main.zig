@@ -20,6 +20,7 @@ comptime {
 }
 
 export fn kernel_main() noreturn {
+    klog.init();
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
 
