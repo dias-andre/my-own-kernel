@@ -1,5 +1,6 @@
 const std = @import("std");
-const arch = @import("../arch/root.zig");
+// const arch = @import("../arch/root.zig");
+const arch = @import("arch");
 const log = @import("../utils/klog.zig").Logger;
 
 pub const pmm = @import("pmm.zig");
@@ -70,4 +71,3 @@ pub fn alloc_page() !void {
 pub fn free_page(page: u64) void {
     pmm.free_page(page);
 }
-

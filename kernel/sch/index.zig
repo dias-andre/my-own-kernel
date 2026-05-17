@@ -1,4 +1,4 @@
-const arch = @import("../arch/root.zig");
+const arch = @import("arch");
 const ctx = @import("context.zig");
 const kmem = @import("../mm/root.zig");
 const Thread = @import("thread.zig").Thread;

@@ -1,4 +1,4 @@
-const arch = @import("../arch/root.zig");
+const arch = @import("arch");
 const pmm = @import("pmm.zig");
 const log = @import("../utils/klog.zig").Logger;
 const Flags = @import("root.zig").Flags;

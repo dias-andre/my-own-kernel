@@ -1,6 +1,6 @@
 const log = @import("../utils/klog.zig").Logger;
-const arch = @import("../arch/root.zig");
-const MemoryMap = @import("../arch/memory_map.zig").MemoryMap;
+const arch = @import("arch");
+const MemoryMap = @import("arch").memory_map.MemoryMap;
 
 var bitmap: [*]u8 = undefined;
 var bitmap_size: usize = 0;

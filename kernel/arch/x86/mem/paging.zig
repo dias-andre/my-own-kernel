@@ -1,5 +1,4 @@
 const memory = @import("memory.zig");
-const log = @import("../../../utils/klog.zig").Logger;
 
 // ==========================================
 // CONSTANTES DE PAGINAÇÃO (FLAGS)

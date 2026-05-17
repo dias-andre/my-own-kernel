@@ -1,4 +1,4 @@
-const lib = @import("../lib.zig");
+const lib = @import("lib");
 
 pub const Color = enum(u8) {
     Black = 0,

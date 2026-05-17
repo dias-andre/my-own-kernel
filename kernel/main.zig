@@ -1,5 +1,4 @@
-const arch = @import("arch/root.zig");
-
+const arch = @import("arch");
 const klog = @import("utils/klog.zig");
 const log = @import("utils/klog.zig").Logger;
 

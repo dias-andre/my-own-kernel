@@ -1,5 +1,5 @@
 const video = @import("../drivers/vga.zig");
-const lib = @import("../lib.zig");
+const lib = @import("lib");
 const serial = @import("../drivers/serial.zig");
 
 const Writer = lib.Io.Writer;

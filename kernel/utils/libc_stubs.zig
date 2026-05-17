@@ -1,4 +1,4 @@
-const arch = @import("../arch/root.zig");
+const arch = @import("arch");
 const std = @import("std");
 const log = @import("klog.zig").Logger;
 
@@ -40,3 +40,4 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
 
     while (true) arch.cpu.idle();
 }
+
