@@ -1,7 +1,7 @@
 const Process = @import("../proc/process.zig").Process;
 const ctx = @import("context.zig");
 const std = @import("std");
-const kmem = @import("../mm/root.zig");
+const kmem = @import("kmem");
 
 pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
     reason: []const u8,

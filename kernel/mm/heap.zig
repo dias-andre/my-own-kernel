@@ -1,6 +1,6 @@
 const arch = @import("arch");
 const pmm = @import("pmm.zig");
-const log = @import("../utils/klog.zig").Logger;
+const log = @import("klog").Logger;
 const std = @import("std");
 
 pub const BlockHeader = packed struct { size: usize, next: u64, has_next: bool, free: bool, magic: u32 };

@@ -1,5 +1,5 @@
-const kmem = @import("../mm/root.zig");
-const log = @import("../utils/klog.zig").Logger;
+const kmem = @import("kmem");
+const log = @import("klog").Logger;
 const sch = @import("../sch/index.zig");
 
 pub const Process = @import("process.zig").Process;

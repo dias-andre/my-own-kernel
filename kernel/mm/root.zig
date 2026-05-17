@@ -1,11 +1,11 @@
-const std = @import("std");
-// const arch = @import("../arch/root.zig");
 const arch = @import("arch");
-const log = @import("../utils/klog.zig").Logger;
+const std = @import("std");
+const klog = @import("klog");
+const log = klog.Logger;
 
 pub const pmm = @import("pmm.zig");
 pub const vmm = @import("vmm.zig");
-pub const heap = @import("./heap.zig");
+pub const heap = @import("heap.zig");
 
 var kheap: heap.Heap = undefined;
 var kernel_page_directory: u64 = undefined;

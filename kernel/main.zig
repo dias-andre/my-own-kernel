@@ -1,13 +1,11 @@
 const arch = @import("arch");
-const klog = @import("utils/klog.zig");
-const log = @import("utils/klog.zig").Logger;
+const klog = @import("klog");
 
-const mm = @import("mm/root.zig");
+const mm = @import("kmem");
 const timer_driver = @import("drivers/timer.zig");
-// const proc = @import("proc/manager.zig");
 
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
-
+const log = klog.Logger;
 const stubs = @import("utils/libc_stubs.zig");
 
 extern var _start: u8;

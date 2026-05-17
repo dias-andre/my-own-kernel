@@ -1,4 +1,4 @@
-const log = @import("../utils/klog.zig").Logger;
+const log = @import("klog").Logger;
 const arch = @import("arch");
 const MemoryMap = @import("arch").memory_map.MemoryMap;
 

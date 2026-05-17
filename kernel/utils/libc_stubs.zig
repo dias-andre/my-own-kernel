@@ -1,6 +1,6 @@
 const arch = @import("arch");
 const std = @import("std");
-const log = @import("klog.zig").Logger;
+const log = @import("klog").Logger;
 
 export fn memcpy(dest: [*]u8, src: [*]const u8, n: usize) callconv(.c) ?[*]u8 {
     var i: usize = 0;
@@ -40,4 +40,3 @@ pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
 
     while (true) arch.cpu.idle();
 }
-

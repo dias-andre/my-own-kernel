@@ -1,6 +1,6 @@
 const arch = @import("arch");
 const pmm = @import("pmm.zig");
-const log = @import("../utils/klog.zig").Logger;
+const log = @import("klog").Logger;
 const Flags = @import("root.zig").Flags;
 
 pub var is_paging_enabled: bool = false;

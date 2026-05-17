@@ -16,13 +16,25 @@ pub fn build(b: *std.Build) void {
         .root_module = b.createModule(.{ .root_source_file = b.path("kernel/main.zig"), .target = target, .optimize = optimize }),
     });
 
-    const arch_module = b.createModule(.{ .root_source_file = b.path("kernel/arch/root.zig") });
-    const lib_module = b.createModule(.{ .root_source_file = b.path("kernel/lib/root.zig") });
+    const ModuleEntry = struct { name: []const u8, mod: *std.Build.Module };
+
+    const module_list = [_]ModuleEntry{
+        .{ .name = "arch", .mod = b.createModule(.{ .root_source_file = b.path("kernel/arch/root.zig") }) },
+        .{ .name = "lib", .mod = b.createModule(.{ .root_source_file = b.path("kernel/lib/root.zig") }) },
+        .{ .name = "kmem", .mod = b.createModule(.{ .root_source_file = b.path("kernel/mm/root.zig") }) },
+        .{ .name = "klog", .mod = b.createModule(.{ .root_source_file = b.path("kernel/utils/klog.zig") }) },
+    };
+
+    for (module_list) |target_mod| {
+        for (module_list) |dependency_mod| {
+            if (std.mem.eql(u8, target_mod.name, dependency_mod.name)) continue;
+            target_mod.mod.addImport(dependency_mod.name, dependency_mod.mod);
+        }
+        kernel_obj.root_module.addImport(target_mod.name, target_mod.mod);
+    }
 
     kernel_obj.root_module.stack_check = false;
     kernel_obj.root_module.stack_protector = false;
-    kernel_obj.root_module.addImport("arch", arch_module);
-    kernel_obj.root_module.addImport("lib", lib_module);
 
     const install_step = b.addInstallFile(kernel_obj.getEmittedBin(), "bin/kernel.o");
     b.getInstallStep().dependOn(&install_step.step);

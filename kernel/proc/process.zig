@@ -1,5 +1,5 @@
 const manager = @import("manager.zig");
-const mem = @import("../mm/root.zig");
+const mem = @import("kmem");
 const sch = @import("../sch/index.zig");
 const Thread = @import("../sch/thread.zig").Thread;
 const std = @import("std");
