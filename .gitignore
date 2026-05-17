@@ -1,6 +1,6 @@
 zig-out/
 .zig-cache/
-filesystem/
+disk/
 /build/*
 kernel.iso
 root_iso/boot/kernel.elf
