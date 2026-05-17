@@ -26,13 +26,15 @@ OBJ_ZIG_MAIN = zig-out/bin/kernel.o
 # Final Binary
 # KERNEL_ELF = $(BUILD_DIR)/kernel.elf
 KERNEL_ELF = zig-out/bin/kernel.elf
+KERNEL_BIN = disk/kernel.bin
 ISO_FILE = kernel.iso
+UEFI_FILE = disk/EFI/BOOT/BOOTX64.EFI
+UEFI_DISK = disk
 LINKER_SCRIPT = linker.ld
-DISK_IMG = filesystem/disk.img
 
 .PHONY: all run debug clean info
 
-all: $(ISO_FILE)
+all: $(ISO_FILE) $(UEFI_FILE) $(KERNEL_BIN)
 
 # --- COMPILATION RULES ---
 $(DISK_IMG): $(KERNEL_ELF)
@@ -46,54 +48,51 @@ $(DISK_IMG): $(KERNEL_ELF)
 	mcopy -i $(DISK_IMG)@@1M -s $(ISO_DIR)/* ::/
 	grub-install --target=i368-pc --boot-directory="::/boot" --image-file=$(DISK_IMG)
 
-# 1. Create ISO image (Depends on Linked Kernel)
+
 $(ISO_FILE): $(KERNEL_ELF)
 	@echo "[ISO] Generating $(ISO_FILE)..."
 	@mkdir -p $(ISO_DIR)/boot/grub
 	cp $(KERNEL_ELF) $(ISO_DIR)/boot/
 	grub-mkrescue -o $(ISO_FILE) $(ISO_DIR)
 
-# 2. Linking (Depends on ASM and Zig Objects)
 $(KERNEL_ELF): $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN) $(LINKER_SCRIPT)
 	@echo "[LINK] Generating Final Kernel..."
 	ld -m elf_x86_64 -T $(LINKER_SCRIPT) -o $(KERNEL_ELF) $(OBJ_ASM_START) $(OBJ_ASM_MULTI) $(OBJ_ZIG_MAIN)
-	# zig build
 
-# 3. Assembly Compilation (Starter)
 $(OBJ_ASM_START): $(INIT_KERNEL_FILES)
 	@mkdir -p $(BUILD_DIR)
 	@echo "[ASM] Compiling starter.asm..."
 	$(ASM) -f elf64 -g $(INIT_KERNEL_FILES) -o $(OBJ_ASM_START)
 
-# 4. Assembly Compilation (Multiboot)
 $(OBJ_ASM_MULTI): $(MULTIBOOT_FILE)
 	@mkdir -p $(BUILD_DIR)
 	@echo "[ASM] Compiling multiboot_header.asm..."
 	$(ASM) -f elf64 -g $(MULTIBOOT_FILE) -o $(OBJ_ASM_MULTI)
 
-# 5. Zig Compilation (THE MAGIC HAPPENS HERE)
-# This rule says: "If any .zig file changes, recompile main.o"
 $(OBJ_ZIG_MAIN): $(KERNEL_SOURCES)
 	@mkdir -p $(BUILD_DIR)
 	@echo "[ZIG] Compiling sources..."
-	# $(ZIG) build-obj $(KERNEL_DIR)/main.zig \
-	# 	-target x86_64-freestanding \
-	# 	-mcpu=x86_64-soft_float \
-	# 	-fno-stack-check \
-	# 	-O ReleaseSafe \
-	# 	-femit-bin=$(OBJ_ZIG_MAIN)
-	zig build
+	zig build -Dkbuild=Object
 
-# --- UTILITIES ---
+$(KERNEL_BIN): $(KERNEL_SOURCES)
+	@mkdir -p $(UEFI_DISK)
+	zig build -Dkbuild=Binary
+	cp zig-out/bin/kernel.bin $(KERNEL_BIN)
+	ls -l $(KERNEL_BIN)
+
+$(UEFI_FILE): $(KERNEL_SOURCES)
+	@mkdir -p $(UEFI_DISK)/EFI/BOOT
+	zig build -Duefi=true
+	cp zig-out/bin/BOOTX64.efi $(UEFI_FILE)
 
 run: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio
 
-run-disk: $(DISK_IMG)
-	qemu-system-x86_64 -hda $(DISK_IMG) format=raw
+run-uefi: $(UEFI_FILE) $(KERNEL_BIN)
+	qemu-system-x86_64 -bios /usr/share/edk2/x64/OVMF.4m.fd -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio
 
 debug: $(ISO_FILE)
-	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio
+	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio -debugcon stdio
 
 # Shows which files Make is seeing (Makefile Debug)
 info:
@@ -101,7 +100,6 @@ info:
 	@echo "Kernel Directory: $(KERNEL_DIR)"
 
 clean:
-	rm -rf $(BUILD_DIR)/*
 	rm -f $(ISO_FILE)
 	rm -f $(ISO_DIR)/boot/*.elf
-	rm -r zig-out/
+	rm -rf $(BUILD_DIR) $(UEFI_DISK) zig-out .zig-cache
