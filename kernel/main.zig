@@ -1,8 +1,12 @@
+comptime {
+    _ = stubs;
+    _ = arch.boot;
+}
 const arch = @import("arch");
 const klog = @import("klog");
 
 const mm = @import("kmem");
-const timer_driver = @import("drivers/timer.zig");
+const apic = @import("apic/root.zig");
 
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
 const log = klog.Logger;
@@ -11,11 +15,6 @@ const stubs = @import("utils/libc_stubs.zig");
 extern var _start: u8;
 extern var _end: u8;
 
-comptime {
-    _ = stubs;
-    _ = arch.boot;
-}
-
 export fn kernel_main() noreturn {
     klog.init();
     log.info("The execution reached kernel main", .{});
@@ -23,8 +22,9 @@ export fn kernel_main() noreturn {
 
     log.info("Enabling Interrupts...", .{});
     arch.interrupts.init();
-    arch.timer.init(100, &timer_driver.handler);
     log.ok("Interrupts enabled! ", .{});
+    // arch.timer.init(100, &timer_driver.handler);
+    apic.init();
 
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
