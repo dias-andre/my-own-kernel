@@ -1,6 +1,21 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
+    const uefi_target = b.resolveTargetQuery(.{
+        .cpu_arch = .x86_64,
+        .os_tag = .uefi,
+    });
+
+    const bootloader = b.addExecutable(.{
+        .name = "BOOTX64",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("boot/start.zig"),
+            .target = uefi_target,
+            .optimize = b.standardOptimizeOption(.{}),
+        }),
+    });
+    b.installArtifact(bootloader);
+
     var query = std.Target.Query{
         .cpu_arch = .x86_64,
         .os_tag = .freestanding,
