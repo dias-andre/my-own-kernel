@@ -3,25 +3,45 @@ const std = @import("std");
 pub const KernelBuildOption = enum { Binary, Object };
 const ModuleEntry = struct { name: []const u8, mod: *std.Build.Module };
 
-pub fn build(b: *std.Build) void {
-    const target_kernel_option = b.option(KernelBuildOption, "kbuild", "Select the target Kernel build") orelse .Object;
-    const build_uefi = b.option(bool, "uefi", "Build UEFI bootloader?") orelse false;
-
-    // KERNEL_MODULE
+fn createKernelModule(b: *std.Build, filename: []const u8) *std.Build.Module {
     var target_query = std.Target.Query{
         .cpu_arch = .x86_64,
         .os_tag = .freestanding,
     };
+
     const features = std.Target.x86.Feature;
     target_query.cpu_features_sub.addFeature(@intFromEnum(features.soft_float));
     const kernel_target = b.resolveTargetQuery(target_query);
     const kernel_optimize = std.builtin.OptimizeMode.ReleaseSafe;
-    const kernel_module = b.createModule(.{
-        .root_source_file = b.path("kernel/main.zig"),
+    const module = b.createModule(.{
+        .root_source_file = b.path(filename),
         .target = kernel_target,
         .optimize = kernel_optimize,
     });
-    kernel_module.pic = false;
+    module.pic = false;
+    module.stack_check = false;
+    module.stack_protector = false;
+    return module;
+}
+
+fn createObjectToKernel(b: *std.Build, module: *std.Build.Module, object_output: []const u8) *std.Build.Step.Compile {
+    const object = b.addObject(.{
+        .root_module = module,
+        .name = object_output,
+    });
+    object.pie = false;
+    return object;
+}
+
+pub fn build(b: *std.Build) void {
+    const target_kernel_option = b.option(KernelBuildOption, "kbuild", "Select the target Kernel build") orelse .Object;
+    const build_uefi = b.option(bool, "uefi", "Build UEFI bootloader?") orelse false;
+
+    const kernel_module = createKernelModule(b, "kernel/main.zig");
+    // const boot_entry_object = createObjectToKernel(b, createKernelModule(b, "kernel/arch/x86/boot.zig"), "boot_entry.o");
+    const libc_object = createObjectToKernel(b, createKernelModule(b, "kernel/utils/libc_stubs.zig"), "libc.o");
+    // kernel_module.addObject(boot_entry_object);
+    kernel_module.addObject(libc_object);
 
     const module_list = [_]ModuleEntry{
         .{ .name = "arch", .mod = b.createModule(.{ .root_source_file = b.path("kernel/arch/root.zig") }) },
@@ -36,10 +56,8 @@ pub fn build(b: *std.Build) void {
             target_mod.mod.addImport(dependency_mod.name, dependency_mod.mod);
         }
         kernel_module.addImport(target_mod.name, target_mod.mod);
+        // boot_entry_object.root_module.addImport(target_mod.name, target_mod.mod);
     }
-
-    kernel_module.stack_check = false;
-    kernel_module.stack_protector = false;
 
     // BOOT_MODULE
     if (build_uefi) {
