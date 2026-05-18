@@ -6,6 +6,7 @@ const log = klog.Logger;
 pub const pmm = @import("pmm.zig");
 pub const vmm = @import("vmm.zig");
 pub const heap = @import("heap.zig");
+pub const mmap = @import("memory_map.zig");
 
 var kheap: heap.Heap = undefined;
 var kernel_page_directory: u64 = undefined;
