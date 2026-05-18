@@ -1,11 +1,14 @@
-pub const mb = @import("../multiboot.zig");
+const uefi = @import("std").os.uefi;
+
+const mb = @import("../multiboot.zig");
+const arch_mmap = @import("kmem").mmap;
+const uefi_mem = @import("./uefi.zig");
 
 pub const PAGE_SIZE = 4096;
 pub const MEMORY_OFFSET = 0xFFFF800000000000;
 
-pub const MemoryRegion = struct { base: usize, len: usize, type: enum { Free, Reserved, Kernel } };
-
-pub const MemoryMap = struct { regions: [64]MemoryRegion = undefined, count: usize = 0 };
+pub const MemoryRegion = arch_mmap.MemoryRegion;
+pub const MemoryMap = arch_mmap.MemoryMap;
 
 var max_ram_address: usize = 0;
 var memory_regions_count: usize = 0;
@@ -14,6 +17,10 @@ var global_memory_map: MemoryMap = .{};
 
 pub fn init(mb_info: *mb.MultibootInfo) void {
     init_memory_map(mb_info);
+}
+
+pub fn init_from_uefi(map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) void {
+    max_ram_address = uefi_mem.get_memory_map(&global_memory_map, map, map_size, desc_size);
 }
 
 pub fn max_ram() usize {
@@ -51,7 +58,7 @@ fn init_memory_map(mb_info: *const mb.MultibootInfo) void {
 
     var idx: usize = 0;
     while (current_addr < end_addr) : (idx += 1) {
-        if(idx >= 64) break;
+        if (idx >= 64) break;
         var region = &global_memory_map.regions[idx];
 
         const entry_ptr: *align(1) const mb.MemoryMapEntry = @ptrFromInt(current_addr);
