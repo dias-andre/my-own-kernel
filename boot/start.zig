@@ -3,7 +3,7 @@ const uefi = std.os.uefi;
 
 const KERNEL_ENTRY: usize = 0x100000;
 
-fn qemu_debug_print(str: []const u8) void {
+fn serial_print(str: []const u8) void {
     for (str) |char| {
         asm volatile ("outb %[value], %[port]"
             :
@@ -18,7 +18,7 @@ pub fn main() uefi.Status {
     const con_out = uefi.system_table.con_out orelse return .device_error;
 
     _ = con_out.outputString(&[_:0]u16{ 'S', 't', 'a', 'r', 't', 'i', 'n', 'g', '.', '.', '.', '\n' }) catch return .device_error;
-    qemu_debug_print("Starting logs with QEMU");
+    serial_print("Starting logs with QEMU");
 
     _ = con_out.outputString(&[_:0]u16{ 'P', '1', '\n' }) catch return .device_error;
     const pages = boot_services.allocatePages(.{ .address = @ptrFromInt(KERNEL_ENTRY) }, .loader_code, 512) catch {
@@ -47,7 +47,7 @@ pub fn main() uefi.Status {
     const buf = map_buf_ptr[0..16384];
 
     _ = con_out.outputString(&[_:0]u16{ 'J', 'U', 'M', 'P', '\n' }) catch return .device_error;
-    qemu_debug_print("getMemoryMap");
+    serial_print("getMemoryMap");
     const memory_map = boot_services.getMemoryMap(buf) catch {
         return .aborted;
     };
@@ -58,6 +58,6 @@ pub fn main() uefi.Status {
 
     const KernelEntryFn = *const fn (map: [*]uefi.tables.MemoryDescriptor, size: usize, d_size: usize) callconv(.c) noreturn;
     const entry: KernelEntryFn = @ptrFromInt(KERNEL_ENTRY);
-    qemu_debug_print("JUMPING TO KERNEL_BOOT");
-    entry(@ptrCast(memory_map.ptr), memory_map.info.descriptor_size * memory_map.info.len, memory_map.info.descriptor_size);
+    serial_print("JUMPING TO KERNEL_BOOT");
+    entry(@ptrCast(memory_map.ptr), memory_map.info.len * memory_map.info.descriptor_size, memory_map.info.descriptor_size);
 }
