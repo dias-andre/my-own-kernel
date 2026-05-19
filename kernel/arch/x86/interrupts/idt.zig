@@ -1,11 +1,9 @@
-const vga = @import("../vga.zig");
-
+const serial = @import("../serial.zig");
+const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
 const pic = @import("pic.zig");
 
 const pit = @import("../pit.zig");
-
-const PanicWriter = vga.PanicWriter;
 
 const isr_table = @import("isr_stub_table.zig");
 
@@ -50,7 +48,6 @@ pub fn init() void {
         :
         : [ptr] "r" (&idt_ptr),
     );
-
 }
 
 export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
@@ -63,59 +60,50 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
             pit.handle_irq();
         },
         33 => {
-          pic.sendEOI(1);
+            pic.sendEOI(1);
         },
         else => {
-            // PanicWriter.cleanError();
-            // PanicWriter.print("Unhandled Interrupt: ");
-            // PanicWriter.printDec(ctx.int_num);
-            // PanicWriter.print("\n");
-            // PanicWriter.print("Error code: ");
-            // PanicWriter.printHex(ctx.error_code);
-            // PanicWriter.print("\nRIP: ");
-            // PanicWriter.printHex(ctx.rip);
-            // PanicWriter.print("\nSystem halted.");
-            PanicWriter.printDec(ctx.int_num);
-            PanicWriter.printAt("Code: ", 0, 23);
-            PanicWriter.printHexAt(ctx.error_code, 6, 23);
-            PanicWriter.printAt("RIP: ", 0, 24);
-            PanicWriter.printHexAt(ctx.error_code, 6, 24);
-            while (true) asm volatile ("hlt");
+            @panic("Unhandled interrupt!\n");
         },
     }
 }
 
-pub fn pageFaultHandler(ctx: *isr_table.TrapFrame) void {
-    const fault_addr = cpu.read_cr2();
-    PanicWriter.cleanError();
+fn pageFaultHandler(ctx: *isr_table.TrapFrame) void {
+    const cr2 = asm volatile ("mov %%cr2, %[ret]"
+        : [ret] "=r" (-> u64),
+    );
+    var panicWriter = getPanicWriter();
 
-    PanicWriter.print("Faulting Address (CR2): 0x");
-    PanicWriter.printHex(fault_addr);
-    PanicWriter.print("\n");
+    panicWriter.print("[PAGE FAULT] ");
+    panicWriter.print("Failed to access memory at: 0x");
+    panicWriter.printHex(cr2);
+    panicWriter.print("\n");
 
-    const error_code = ctx.error_code;
+    panicWriter.print("-> [RIP]: 0x");
+    panicWriter.printHex(ctx.rip);
 
-    if ((error_code & 1) == 0) {
-        PanicWriter.print("[Not Present] ");
-    } else {
-        PanicWriter.print(" [Protection Violation] ");
-    }
+    panicWriter.print(", [ERROR_CODE]: ");
+    panicWriter.printHex(ctx.error_code);
+    panicWriter.print("\n");
+    @panic(".");
+}
 
-    if ((error_code & 2) != 0) {
-        PanicWriter.print(" [Write operation] ");
-    } else {
-        PanicWriter.print(" [Read Operation] ");
-    }
+fn getPanicWriter() lib.Io.FormatWriter {
+    return lib.Io.FormatWriter{
+        .inner = lib.Io.Writer{
+            .ptr = undefined,
+            .vtable = &.{
+                .write = &writeChar,
+                .put = &putChar,
+            },
+        },
+    };
+}
 
-    if ((error_code & 4) != 0) {
-        PanicWriter.print(" [User Mode]");
-    } else {
-        PanicWriter.print(" [Kernel Mode] ");
-    }
-    PanicWriter.print("\n");
+fn putChar(_: *anyopaque, data: u8) void {
+    serial.putChar(data);
+}
 
-    PanicWriter.print("System Halted.");
-    while (true) {
-        asm volatile ("hlt");
-    }
+fn writeChar(_: *anyopaque, data: []const u8) void {
+    serial.print(data);
 }

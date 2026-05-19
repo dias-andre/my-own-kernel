@@ -29,7 +29,7 @@ export fn kernel_main() noreturn {
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     // @setCold(true);
     asm volatile ("cli");
-    log.failed("PANIC! {}", .{msg});
+    log.println("==> @panic: {}", .{msg});
     while (true) asm volatile ("hlt");
 }
 
