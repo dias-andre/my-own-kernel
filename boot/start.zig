@@ -56,7 +56,7 @@ pub fn main() uefi.Status {
         return .aborted;
     };
 
-    const KernelEntryFn = *const fn (map: [*]uefi.tables.MemoryDescriptor, size: usize, d_size: usize) callconv(.c) noreturn;
+    const KernelEntryFn = *const fn (map: [*]uefi.tables.MemoryDescriptor, size: usize, d_size: usize) callconv(.{ .x86_64_sysv = .{} }) noreturn;
     const entry: KernelEntryFn = @ptrFromInt(KERNEL_ENTRY);
     serial_print("JUMPING TO KERNEL_BOOT");
     entry(@ptrCast(memory_map.ptr), memory_map.info.len * memory_map.info.descriptor_size, memory_map.info.descriptor_size);

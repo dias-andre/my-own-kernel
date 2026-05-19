@@ -1,5 +1,5 @@
 const uefi = @import("std").os.uefi;
-const multiboot = @import("multiboot.zig");
+
 const mem = @import("mem/memory.zig");
 const gdt = @import("cpu/gdt.zig");
 const idt = @import("interrupts/idt.zig");
@@ -18,19 +18,22 @@ extern fn kernel_main() noreturn;
 //     unreachable;
 // }
 
-export fn kernel_boot(map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) linksection(".text.kernel_boot") callconv(.c) noreturn {
-    _ = map;
-    _ = map_size;
-    _ = desc_size;
-
+export fn kernel_boot(map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
     serial.print("Reached kernel_boot\n");
+
+    serial.print("Initializing UEFI memory map...\n");
+    mem.init_from_uefi(map, map_size, desc_size);
     gdt.init();
+    serial.print("GDT initialized!\n");
     idt.init();
+    serial.print("IDT initialized!\n");
     cpu.enable_sse();
+    serial.print("SSE enabled!\n");
     serial.print("Call kernel_main\n");
-    while (true) {
-        asm volatile ("nop");
-    }
+    // while (true) {
+    //     serial.print("halt loop\n");
+    //     asm volatile ("hlt");
+    // }
     kernel_main();
     unreachable;
 }
