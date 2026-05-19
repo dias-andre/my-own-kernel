@@ -1,7 +1,5 @@
 const builtin = @import("builtin");
 
-pub const memory_map = @import("memory_map.zig");
-
 const impl = switch (builtin.cpu.arch) {
     .x86_64 => @import("x86/impl.zig"),
     else => @compileError("Arquitetura não suportada!"),
