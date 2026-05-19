@@ -13,8 +13,8 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
     var max_ram: usize = 0;
 
     while (offset < map_size) : (offset += desc_size) {
-        if (idx >= 64) {
-            serial.print("IDX reached 64!\n");
+        if (idx >= global_map.regions.len) {
+            serial.print("IDX reached regions limit!");
             break;
         }
         // const desc: *uefi.tables.MemoryDescriptor = @ptrFromInt(base_ptr + offset);
@@ -24,11 +24,11 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
 
         const kind: MemoryKind = switch (desc.type) {
             .conventional_memory => .Free,
-            .boot_services_code, .boot_services_data => .Free,
-            .loader_code, .loader_data => .Free,
+            .boot_services_code, .boot_services_data => .Reserved,
+            .loader_code, .loader_data => .Kernel,
 
-            .acpi_reclaim_memory => .Kernel,
-            .acpi_memory_nvs => .Kernel,
+            .acpi_reclaim_memory => .Reserved,
+            .acpi_memory_nvs => .Reserved,
             .unusable_memory => .BadMemory,
             else => .Reserved,
         };
@@ -37,14 +37,14 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
         region.type = kind;
         region.page_count = desc.number_of_pages;
         region.len = desc.number_of_pages * 4096;
-        serial.print("Found region\n");
-        const region_end = desc.physical_start + (desc.number_of_pages * 4096);
-        if (region_end > max_ram) {
-            max_ram = region_end;
+        if (kind == .Free or kind == .Kernel) {
+            const region_end = desc.physical_start + (desc.number_of_pages * 4096);
+            if (region_end > max_ram) {
+                max_ram = region_end;
+            }
         }
         idx += 1;
     }
     global_map.count = idx;
-    serial.print("Returning\n");
     return max_ram;
 }

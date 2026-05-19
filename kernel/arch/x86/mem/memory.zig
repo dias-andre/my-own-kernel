@@ -27,8 +27,8 @@ pub fn max_ram() usize {
     return max_ram_address;
 }
 
-pub fn memory_map() MemoryMap {
-    return global_memory_map;
+pub fn memory_map() *MemoryMap {
+    return &global_memory_map;
 }
 
 pub fn memory_regions() []MemoryRegion {
