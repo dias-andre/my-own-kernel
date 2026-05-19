@@ -1,12 +1,12 @@
 const uefi = @import("std").os.uefi;
-
 const mem = @import("mem/memory.zig");
 const gdt = @import("cpu/gdt.zig");
 const idt = @import("interrupts/idt.zig");
 const cpu = @import("cpu/cpu.zig");
 const serial = @import("serial.zig");
 
-extern fn kernel_main() noreturn;
+const BootInfo = @import("bootinfo").BootInfo;
+extern fn kernel_main(rsdp: u64) noreturn;
 
 // export fn kernel_boot(pointer: u64, magic: u64) callconv(.c) noreturn {
 //     const mb_info = multiboot.init(pointer, magic);
@@ -18,11 +18,11 @@ extern fn kernel_main() noreturn;
 //     unreachable;
 // }
 
-export fn kernel_boot(map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
+export fn kernel_boot(info: *BootInfo) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
     serial.print("Reached kernel_boot\n");
 
     serial.print("Initializing UEFI memory map...\n");
-    mem.init_from_uefi(map, map_size, desc_size);
+    mem.init_from_uefi(info.map, info.map_size, info.desc_size);
     gdt.init();
     serial.print("GDT initialized!\n");
     idt.init();
@@ -34,6 +34,6 @@ export fn kernel_boot(map: [*]uefi.tables.MemoryDescriptor, map_size: usize, des
     //     serial.print("halt loop\n");
     //     asm volatile ("hlt");
     // }
-    kernel_main();
+    kernel_main(info.rsdp_addr);
     unreachable;
 }

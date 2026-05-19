@@ -14,6 +14,8 @@ fn serial_print(str: []const u8) void {
     }
 }
 
+var boot_info: BootInfo = undefined;
+
 pub fn main() uefi.Status {
     const boot_services = uefi.system_table.boot_services orelse return .device_error;
     const con_out = uefi.system_table.con_out orelse return .device_error;
@@ -73,8 +75,13 @@ pub fn main() uefi.Status {
         return .aborted;
     };
 
-    const KernelEntryFn = *const fn (map: [*]uefi.tables.MemoryDescriptor, size: usize, d_size: usize, rsdp: u64) callconv(.{ .x86_64_sysv = .{} }) noreturn;
+    boot_info.map = @ptrCast(memory_map.ptr);
+    boot_info.map_size = memory_map.info.len * memory_map.info.descriptor_size;
+    boot_info.desc_size = memory_map.info.descriptor_size;
+    boot_info.rsdp_addr = rsdp_address;
+
+    const KernelEntryFn = *const fn (info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn;
     const entry: KernelEntryFn = @ptrFromInt(KERNEL_ENTRY);
     serial_print("JUMPING TO KERNEL_BOOT");
-    entry(@ptrCast(memory_map.ptr), memory_map.info.len * memory_map.info.descriptor_size, memory_map.info.descriptor_size, rsdp_address);
+    entry(&boot_info);
 }

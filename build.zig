@@ -38,9 +38,12 @@ pub fn build(b: *std.Build) void {
     const build_uefi = b.option(bool, "uefi", "Build UEFI bootloader?") orelse false;
 
     const kernel_module = createKernelModule(b, "kernel/main.zig");
-    // const boot_entry_object = createObjectToKernel(b, createKernelModule(b, "kernel/arch/x86/boot.zig"), "boot_entry.o");
+    const bootinfo_module = b.createModule(.{
+        .root_source_file = b.path("kernel/boot/bootinfo.zig"),
+    });
+    kernel_module.addImport("bootinfo", bootinfo_module);
+
     const libc_object = createObjectToKernel(b, createKernelModule(b, "kernel/utils/libc_stubs.zig"), "libc.o");
-    // kernel_module.addObject(boot_entry_object);
     kernel_module.addObject(libc_object);
 
     const module_list = [_]ModuleEntry{
@@ -56,7 +59,7 @@ pub fn build(b: *std.Build) void {
             target_mod.mod.addImport(dependency_mod.name, dependency_mod.mod);
         }
         kernel_module.addImport(target_mod.name, target_mod.mod);
-        // boot_entry_object.root_module.addImport(target_mod.name, target_mod.mod);
+        target_mod.mod.addImport("bootinfo", bootinfo_module);
     }
 
     // BOOT_MODULE
@@ -69,11 +72,12 @@ pub fn build(b: *std.Build) void {
         const bootloader = b.addExecutable(.{
             .name = "BOOTX64",
             .root_module = b.createModule(.{
-                .root_source_file = b.path("boot/start.zig"),
+                .root_source_file = b.path("kernel/boot/start.zig"),
                 .target = uefi_target,
                 .optimize = b.standardOptimizeOption(.{}),
             }),
         });
+        bootloader.root_module.addImport("bootinfo", bootinfo_module);
         b.installArtifact(bootloader);
     }
 

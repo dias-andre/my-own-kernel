@@ -16,7 +16,7 @@ MULTIBOOT_FILE = $(ASM_DIR)/init/multiboot_header.asm
 
 # Zig: Recursively find all .zig files inside kernel/
 KERNEL_SOURCES = $(shell find $(KERNEL_DIR) -name "*.zig")
-UEFI_SOURCES = $(shell find ./boot -name "*.zig")
+UEFI_SOURCES = $(shell find $(KERNEL_DIR)/boot -name "*.zig")
 UEFI_BIOS = /usr/share/edk2/x64/OVMF.4m.fd
 
 # Generated Objects
@@ -64,7 +64,7 @@ $(OBJ_ZIG_MAIN): $(KERNEL_SOURCES)
 	@echo "[ZIG] Compiling sources..."
 	zig build -Dkbuild=Object
 
-$(KERNEL_BIN): $(KERNEL_SOURCES)
+$(KERNEL_BIN): $(KERNEL_DIR)/boot/bootinfo.zig $(KERNEL_SOURCES)
 	@mkdir -p $(UEFI_DISK)
 	zig build -Dkbuild=Binary
 	cp zig-out/bin/kernel.bin $(KERNEL_BIN)

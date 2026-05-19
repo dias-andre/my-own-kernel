@@ -10,7 +10,7 @@ const log = klog.Logger;
 extern var _start: u8;
 extern var _end: u8;
 
-export fn kernel_main() noreturn {
+export fn kernel_main(rsdp: u64) noreturn {
     log.init();
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
@@ -23,6 +23,9 @@ export fn kernel_main() noreturn {
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
 
+    log.info("RSDP at {}", .{rsdp});
+    const str = @as([*]u8, @ptrFromInt(rsdp))[0..8];
+    log.info("{}", .{@as([]u8, str)});
     while (true) arch.cpu.idle();
 }
 
