@@ -16,6 +16,8 @@ MULTIBOOT_FILE = $(ASM_DIR)/init/multiboot_header.asm
 
 # Zig: Recursively find all .zig files inside kernel/
 KERNEL_SOURCES = $(shell find $(KERNEL_DIR) -name "*.zig")
+UEFI_SOURCES = $(shell find ./boot -name "*.zig")
+UEFI_BIOS = /usr/share/edk2/x64/OVMF.4m.fd
 
 # Generated Objects
 OBJ_ASM_START = $(BUILD_DIR)/starter.o
@@ -68,7 +70,7 @@ $(KERNEL_BIN): $(KERNEL_SOURCES)
 	cp zig-out/bin/kernel.bin $(KERNEL_BIN)
 	ls -l $(KERNEL_BIN)
 
-$(UEFI_FILE): $(KERNEL_SOURCES)
+$(UEFI_FILE): $(UEFI_SOURCES)
 	@mkdir -p $(UEFI_DISK)/EFI/BOOT
 	zig build -Duefi=true
 	cp zig-out/bin/BOOTX64.efi $(UEFI_FILE)
@@ -76,8 +78,8 @@ $(UEFI_FILE): $(KERNEL_SOURCES)
 run: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio
 
-run-uefi: $(UEFI_FILE) $(KERNEL_BIN)
-	qemu-system-x86_64 -bios /usr/share/edk2/x64/OVMF.4m.fd -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio -display none
+run-uefi: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
+	qemu-system-x86_64 -bios $(UEFI_BIOS) -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio -display none
 
 debug: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio -debugcon stdio
