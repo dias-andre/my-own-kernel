@@ -1,11 +1,10 @@
 const uefi = @import("std").os.uefi;
-
-const arch_mmap = @import("kmem").mmap;
+const mmap = @import("kmem").mmap;
 const serial = @import("../serial.zig");
 
-const MemoryRegion = arch_mmap.MemoryRegion;
-const MemoryMap = arch_mmap.MemoryMap;
-const MemoryKind = arch_mmap.MemoryKind;
+const MemoryRegion = mmap.MemoryRegion;
+const MemoryMap = mmap.MemoryMap;
+const MemoryKind = mmap.MemoryKind;
 
 pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) usize {
     var offset: usize = 0;
@@ -28,8 +27,8 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
             .boot_services_code, .boot_services_data => .Free,
             .loader_code, .loader_data => .Free,
 
-            .acpi_reclaim_memory => .Reserved,
-            .acpi_memory_nvs => .Reserved,
+            .acpi_reclaim_memory => .Kernel,
+            .acpi_memory_nvs => .Kernel,
             .unusable_memory => .BadMemory,
             else => .Reserved,
         };
@@ -38,7 +37,7 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
         region.type = kind;
         region.page_count = desc.number_of_pages;
         region.len = desc.number_of_pages * 4096;
-
+        serial.print("Found region\n");
         const region_end = desc.physical_start + (desc.number_of_pages * 4096);
         if (region_end > max_ram) {
             max_ram = region_end;
@@ -46,5 +45,6 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
         idx += 1;
     }
     global_map.count = idx;
+    serial.print("Returning\n");
     return max_ram;
 }
