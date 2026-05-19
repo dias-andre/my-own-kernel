@@ -20,7 +20,6 @@ KERNEL_SOURCES = $(shell find $(KERNEL_DIR) -name "*.zig")
 # Generated Objects
 OBJ_ASM_START = $(BUILD_DIR)/starter.o
 OBJ_ASM_MULTI = $(BUILD_DIR)/multiboot_header.o
-# OBJ_ZIG_MAIN  = $(BUILD_DIR)/main.o
 OBJ_ZIG_MAIN = zig-out/bin/kernel.o
 
 # Final Binary
@@ -37,17 +36,6 @@ LINKER_SCRIPT = linker.ld
 all: $(ISO_FILE) $(UEFI_FILE) $(KERNEL_BIN)
 
 # --- COMPILATION RULES ---
-$(DISK_IMG): $(KERNEL_ELF)
-	@echo "[DISK] Creating virtual disk"
-	dd if=/dev/zero of=$(DISK_IMG) bs=1M count=50
-	parted -s $(DISK_IMG) mklabel msdos
-	parted -s $(DISK_IMG) mkpart primary fat32 2048s 100%
-	parted -s $(DISK_IMG) set 1 boot on
-
-	mformat -i $(DISK_IMG)@@1M -F
-	mcopy -i $(DISK_IMG)@@1M -s $(ISO_DIR)/* ::/
-	grub-install --target=i368-pc --boot-directory="::/boot" --image-file=$(DISK_IMG)
-
 
 $(ISO_FILE): $(KERNEL_ELF)
 	@echo "[ISO] Generating $(ISO_FILE)..."
@@ -89,7 +77,7 @@ run: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio
 
 run-uefi: $(UEFI_FILE) $(KERNEL_BIN)
-	qemu-system-x86_64 -bios /usr/share/edk2/x64/OVMF.4m.fd -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio
+	qemu-system-x86_64 -bios /usr/share/edk2/x64/OVMF.4m.fd -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio -display none
 
 debug: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio -debugcon stdio
