@@ -2,46 +2,47 @@ const arch = @import("arch");
 const pmm = @import("pmm.zig");
 const log = @import("klog").Logger;
 const Flags = @import("root.zig").Flags;
+const mmap = @import("./memory_map.zig");
 
 pub var is_paging_enabled: bool = false;
 pub var kernel_directory: usize = undefined;
 
 pub fn init() void {
     log.info("(VMM) Initializing Virtual Memory Management", .{});
-    const memory_size = arch.memory.max_ram();
-    const page_phys = pmm.allocate_page() orelse {
-        log.failed("Failed to allocate physical pages during VMM start", .{});
-        while (true) arch.cpu.idle();
+    const memory_map = arch.memory.memory_map();
+    const phys_page_dir = pmm.allocate_page() orelse {
+        @panic("Failed to allocate physical page to create page directory.");
     };
+    arch.paging.init_page_directory(phys_page_dir);
+    log.debug("Page directory initialized!", .{});
+    log.debug("VMM: Allocated page directory at physical address: {}", .{@as(*u64, @ptrFromInt(phys_page_dir))});
+    log.debug("VMM: Is aligned? {}", .{phys_page_dir % arch.memory.PAGE_SIZE == 0});
+    if ((phys_page_dir % arch.memory.PAGE_SIZE) != 0) @panic("VMM -> Page phys not aligned!");
 
-    arch.paging.init_page_directory(page_phys);
-    log.println("- Directory initialized!", .{});
-
-    log.debug("VMM: Allocated page directory at phys: {}", .{@as(*u64, @ptrFromInt(page_phys))});
-    log.debug("VMM: Is aligned? {}", .{page_phys % 4096});
-    if ((page_phys % arch.memory.PAGE_SIZE) != 0) @panic("VMM PANIC: Page phys not aligned!");
-
-    const aligned_limit = (memory_size + (arch.memory.PAGE_SIZE - 1)) & ~@as(usize, arch.memory.PAGE_SIZE - 1);
-    var current_addr: usize = 0;
+    var idx: usize = 0;
     const flags = Flags.DATA_KERNEL;
+    log.debug("Start mapping pages", .{});
+    for (memory_map.regions) |region| {
+        if (idx >= memory_map.count) break;
+        if (region.type == .BadMemory) continue;
 
-    while (current_addr < aligned_limit) : (current_addr += arch.memory.PAGE_SIZE) {
-        arch.paging.map(page_phys, current_addr, current_addr, flags) catch {
-            log.failed("Failed to allocate physical page during VMM initialization", .{});
-            while (true) arch.cpu.idle();
-        };
+        var current_addr: usize = region.base;
+        while (current_addr < (region.base + region.len)) : (current_addr += arch.memory.PAGE_SIZE) {
+            // Identity Mapping
+            arch.paging.map(phys_page_dir, current_addr, current_addr, flags) catch
+                @panic("Failed to map page for Identity Mapping!");
 
-        const virt_offset = current_addr + arch.memory.MEMORY_OFFSET;
-        arch.paging.map(page_phys, virt_offset, current_addr, flags) catch {
-            log.failed("Failed to allocate physical page during VMM initialization", .{});
-            while (true) arch.cpu.idle();
-        };
+            const virt_offset = current_addr + arch.memory.MEMORY_OFFSET;
+            arch.paging.map(phys_page_dir, virt_offset, current_addr, flags) catch
+                @panic("Failed to map page for higher half mapping!");
+        }
+
+        idx += 1;
     }
-
-    log.println("- Identity & Higher Half mapped (limit: {}MB)", .{aligned_limit / 1024 / 1024});
-    log.println("- Loading page directory...", .{});
-    kernel_directory = page_phys;
-    arch.paging.load_page_directory(page_phys);
+    log.debug("Regions mapped {}", .{idx});
+    kernel_directory = phys_page_dir;
+    log.debug("Loading page directory...", .{});
+    arch.paging.load_page_directory(kernel_directory);
     arch.paging.set_paging_enabled();
     log.ok("(VMM) Virtual Memory Manager initialized successfully!", .{});
 }

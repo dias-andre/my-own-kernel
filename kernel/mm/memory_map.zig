@@ -7,4 +7,4 @@ pub const MemoryRegion = struct {
     type: MemoryKind,
 };
 
-pub const MemoryMap = struct { regions: [64]MemoryRegion = undefined, count: usize = 0 };
+pub const MemoryMap = struct { regions: [512]MemoryRegion = undefined, count: usize = 0 };

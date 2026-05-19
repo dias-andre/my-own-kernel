@@ -28,21 +28,23 @@ fn align_up(addr: usize) usize {
 
 pub fn init(kernel_end: usize) void {
     log.info("(PMM) Initializing physical memory manager...", .{});
+    const memory_map = arch.memory.memory_map();
     total_pages = arch.memory.max_ram() / arch.memory.PAGE_SIZE;
 
-    bitmap_size = total_pages / 8;
+    bitmap_size = (total_pages + 7) / 8;
 
     const bitmap_phys_addr = align_up(kernel_end);
     bitmap = @ptrFromInt(bitmap_phys_addr);
 
     // DEBUG INFO
-    log.println("- Total RAM: {}MB", .{arch.memory.max_ram() / 1024 / 1024});
-    log.println("- Bitmap size: {} bytes", .{bitmap_size});
+    log.debug("- Total RAM: {}", .{arch.memory.max_ram()});
+    log.debug("- Bitmap size: {} bytes", .{bitmap_size});
+    log.debug("- Regions count: {}", .{memory_map.count});
+    log.debug("- Total pages: {}", .{total_pages});
 
     // @memset
     fill_memory(bitmap, 0xff, bitmap_size);
-    log.debug("Memory filled", .{});
-    for (arch.memory.memory_regions()) |region| {
+    for (memory_map.regions[0..memory_map.count]) |region| {
         if (region.type == .Free) {
             init_region(region.base, region.len);
         }
