@@ -1,9 +1,17 @@
 const lib = @import("lib");
-const video = @import("./vga.zig");
 const serial = @import("./serial.zig");
 
 const Writer = lib.Io.Writer;
 const FormatWriter = lib.Io.FormatWriter;
+
+pub fn createSerialLogger() lib.Logging.LoggerPort {
+    return .{
+        .ptr = undefined,
+        .fw = .{
+            .inner = serial.SerialWriter(),
+        },
+    };
+}
 
 pub const Logger = struct {
     var serialWriter = serial.SerialWriter();
