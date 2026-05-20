@@ -19,7 +19,7 @@ Initially conceived in C, the project **migrated to Zig** to leverage modern lan
 
 ## 🚀 Project Status
 
-The kernel boots **natively via UEFI** — no GRUB/Multiboot legacy path. The `make run-uefi` target is the primary way to run it.
+The kernel boots **natively via UEFI** — no GRUB/Multiboot legacy path. The `make run` target is the primary way to run it.
 
 I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern hardware using the **APIC** (Advanced Programmable Interrupt Controller) instead of the legacy PIC. ACPI tables (RSDP → XSDT → MADT) are already being parsed to discover the APIC base address.
 
@@ -65,9 +65,6 @@ The project has moved away from Multiboot/GRUB. The **`run-uefi`** target is the
 
 ```bash
 # Build and boot via UEFI (recommended)
-make run-uefi
-
-# Build Multiboot ISO and run via GRUB (legacy)
 make run
 
 # Debug mode (QEMU + GDB stub)

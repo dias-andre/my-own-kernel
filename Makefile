@@ -75,10 +75,7 @@ $(UEFI_FILE): $(UEFI_SOURCES)
 	zig build -Duefi=true
 	cp zig-out/bin/BOOTX64.efi $(UEFI_FILE)
 
-run: $(ISO_FILE)
-	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -serial stdio
-
-run-uefi: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
+run: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
 	qemu-system-x86_64 -bios $(UEFI_BIOS) -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio -display none
 
 debug: $(ISO_FILE)
