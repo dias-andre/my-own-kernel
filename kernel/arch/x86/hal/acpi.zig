@@ -14,7 +14,7 @@ const RSDP_Descriptor = extern struct {
     reserved: [3]u8 align(1),
 };
 
-const SDT_Header = extern struct {
+pub const SDT_Header = extern struct {
     signature: [4]u8 align(1),
     length: u32 align(1),
     revision: u8 align(1),
@@ -44,8 +44,7 @@ fn verify_sdt_checksum(header: *SDT_Header) bool {
     return sum == 0;
 }
 
-var madt: u64 = undefined;
-
+var madt: u64 = 0;
 pub fn init(ptr: u64) void {
     const rsdp: *RSDP_Descriptor = @ptrFromInt(ptr);
     if (!std.mem.eql(u8, &rsdp.signature, "RSD PTR ")) {
@@ -95,11 +94,16 @@ fn find_madt_with_xsdt(ptr: u64) ?u64 {
         const entry = @as(*SDT_Header, @ptrFromInt(pointers[i]));
         if (std.mem.eql(u8, &entry.signature, "APIC")) {
             log.ok("MADT (APIC) found at: {}", .{entry});
-            return i;
+            return pointers[i];
         } else {
             log.debug("Ignored table: {}", .{@as([]const u8, entry.signature[0..4])});
         }
     }
 
     return null;
+}
+
+pub fn get_madt_addr() u64 {
+    if (madt == 0) @panic("MADT not found! (madt = 0)");
+    return madt;
 }
