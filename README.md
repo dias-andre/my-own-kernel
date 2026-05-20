@@ -3,89 +3,107 @@
 ![Zig](https://img.shields.io/badge/Made%20with-Zig-orange?style=for-the-badge&logo=zig)
 ![Assembly](https://img.shields.io/badge/Arch-x86__64-blue?style=for-the-badge&logo=intel)
 
-Um kernel experimental escrito do zero, focando em modernidade e segurança de memória. Inicialmente concebido em C, o projeto foi **migrado para Zig** para explorar recursos de linguagem moderna em desenvolvimento de baixo nível (OSDev).
+A hobby x86_64 kernel written from scratch in Zig. This is a personal, educational project — I'm building it to learn low-level systems programming, memory management, hardware interfacing, and operating system design using modern tooling.
 
-O objetivo é construir um pequeno sistema operacional x86_64 compatível com Multiboot, implementando gerenciamento de memória, interrupções e drivers básicos.
+Initially conceived in C, the project **migrated to Zig** to leverage modern language features in OS development.
 
 ---
 
 ## 📸 Screenshots
 
-> *Estado atual do kernel executando no QEMU, exibindo a inicialização do Memory Management Subsystem.*
+> *Current state of the kernel running in QEMU, booting via UEFI with the Memory Management Subsystem initializing.*
 
 ![Kernel Screenshot](./docs/print.png)
 
 ---
 
-## 🚀 Status do Projeto
+## 🚀 Project Status
 
-O kernel está na fase de **Preparação para a troca de contexto**.
+The kernel boots **natively via UEFI** — no GRUB/Multiboot legacy path. The `make run-uefi` target is the primary way to run it.
 
-### ✅ Implementado
-- [x] **Bootloader:** Suporte a Multiboot (GRUB) via Assembly (`multiboot_header.asm`).
-- [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`kernel/main.zig`).
-- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`kernel/drivers/vga.zig`).
-- [x] **IDT (Interrupt Descriptor Table):** Tratamento básico de interrupções e exceções implementado em Zig.
-- [x] **Multiboot Parsing:** Leitura do mapa de memória fornecido pelo BIOS/GRUB.
-- [x] **PMM (Physical Memory Manager):**
-  - Alocador de páginas físicas (4KB).
-  - Uso de **Bitmap** para rastrear memória livre/ocupada.
-  - Proteção de memória do Kernel e do próprio Bitmap.
-- [x] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
-- [x] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
-- [x] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
-- [x] **PIC:** Gerenciar interrupções de hardware.
+I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern hardware using the **APIC** (Advanced Programmable Interrupt Controller) instead of the legacy PIC. ACPI tables (RSDP → XSDT → MADT) are already being parsed to discover the APIC base address.
 
-### 🚧 Em Progresso
+### ✅ Implemented
+- [x] **UEFI Bootloader:** Hand-written Zig UEFI app loads `kernel.bin` and passes a `BootInfo` struct (memory map, RSDP address).
+- [x] **Physical Memory Manager:** 4KB page bitmap allocator with kernel/bitmap memory protection.
+- [x] **Virtual Memory Manager:** Higher-half 4-level paging (offset `0xFFFF800000000000`).
+- [x] **Heap Allocator:** Linked-list `kmalloc`/`kfree` with block magic (`0xc0ffee`).
+- [x] **GDT:** Kernel code/data, user code/data, TSS.
+- [x] **IDT:** Full 256-entry table generated at compile time from assembly stubs.
+- [x] **PIC (legacy):** IRQ remapping (master 0x20, slave 0xA0).
+- [x] **PIT Timer:** Programmable Interval Timer at 100 Hz.
+- [x] **PS/2 Keyboard Driver:** Interrupt-driven input.
+- [x] **VGA Text Mode Driver:** Colored console output (via 0xB8000 mapped at 0xC00B8000).
+- [x] **Syscall Infrastructure:** `swapgs`/`sysretq` entry, handlers for `exit`, `yield`, `sleep`.
+- [x] **Scheduler:** Round-robin with circular linked-list of threads (no ready threads at boot).
+- [x] **Process Model:** Parent/child/sibling tree, ref-counted, page directory cloning.
 
-- [ ] **Multithreading:** Gerenciamento de Threads e trocas de contexto.
+### 🚧 In Progress
+- [ ] **Hardware Abstraction Layer (HAL):** ACPI (RSDP/XSDT/MADT) parsing, APIC discovery and initialization.
+- [ ] **APIC:** Replacing the legacy PIC with the local APIC and I/O APIC for interrupt management.
 
 ---
 
-## 🛠️ Como Compilar e Executar
+## 🛠️ How to Build and Run
 
-### Dependências
-Para compilar este projeto, você precisará das seguintes ferramentas instaladas no seu Linux (Manjaro/Arch ou similar):
+### Dependencies
 
-* **Zig** (Compilador principal)
-* **NASM** (Assembler para os stubs de boot)
-* **QEMU** (Emulador para testes)
-* **GRUB / xorriso** (Para criar a imagem ISO bootável)
-* **Linker (`ld`)** (Geralmente parte do binutils)
+| Tool | Purpose |
+|------|---------|
+| **Zig 0.16** | Primary compiler (managed via [zvm](https://github.com/tristanisham/zvm)) |
+| **NASM** | Assembler for boot stubs |
+| **QEMU** | Emulator for testing |
+| **Linker (`ld`)** | Part of binutils for the legacy Multiboot path |
+| **OVMF** | UEFI firmware (`/usr/share/edk2/x64/OVMF.4m.fd`) |
+| **xorriso** | ISO creation (legacy Multiboot path only) |
 
-### Comandos (Makefile)
+> **Important:** The project uses Zig **0.16**. Install it with `zvm install 0.16.0 && zvm use 0.16.0`.
 
-O projeto utiliza um `Makefile` para facilitar o fluxo de desenvolvimento:
+### Makefile Targets
+
+The project has moved away from Multiboot/GRUB. The **`run-uefi`** target is the recommended way to run:
 
 ```bash
-# Compilar todo o kernel e gerar a ISO
-make all
+# Build and boot via UEFI (recommended)
+make run-uefi
 
-# Compilar e executar imediatamente no QEMU
+# Build Multiboot ISO and run via GRUB (legacy)
 make run
 
-# Limpar arquivos de build (.o, .elf, .iso)
-make clean
-
-# Executar em modo Debug (aguarda conexão do GDB)
+# Debug mode (QEMU + GDB stub)
 make debug
 
+# Clean build artifacts
+make clean
+
+# List discovered Zig sources
+make info
 ```
 
 ---
 
-## 📂 Estrutura do Projeto
+## 📂 Project Structure
 
 ```text
 /
 ├── kernel/
-│   ├── arch/x86/        # Código específico de arquitetura (Assembly/GDT/IDT)
-│   ├── mm/              # Gerenciamento de Memória (Heap, VMM, PMM, Bitmap)
-│   ├── drivers/         # Drivers no geral (Teclado, Vídeo, Timer)
-│   ├── utils/           # Utilitários do Kernel (Logger)
-│   ├── main.zig         # Ponto de entrada do Kernel
-│   └── multiboot.zig    # Parsing do cabeçalho Multiboot
-├── linker.ld            # Script de Linkagem
-└── Makefile             # Automação de build
-
+│   ├── arch/x86/        # Architecture-specific code (GDT, IDT, paging, syscall ABI, boot)
+│   │   ├── hal/         # Hardware Abstraction Layer (ACPI → APIC)
+│   │   ├── interrupts/  # PIC, IDT stubs
+│   │   ├── mem/         # Paging, memory layout
+│   │   ├── cpu/         # CPU features (GDT, TSS, syscalls)
+│   │   └── sys/         # Syscall entry/context
+│   ├── boot/            # UEFI bootloader (start.zig) + BootInfo shared struct
+│   ├── drivers/         # VGA, keyboard, timer
+│   ├── hal/             # Interface definitions (e.g., InterruptController)
+│   ├── mm/              # Memory management (PMM, VMM, heap)
+│   ├── proc/            # Process manager
+│   ├── sch/             # Scheduler + context switch
+│   ├── sys/             # Syscall handlers
+│   ├── utils/           # Logger, VGA, serial, libc stubs
+│   └── lib/             # Generic library code (I/O, logging helpers)
+├── build.zig            # Zig build system (cross-compilation, UEFI target)
+├── kernel.ld            # Linker script (UEFI boot path)
+├── linker.ld            # Linker script (legacy Multiboot path)
+└── Makefile             # Build automation
 ```
