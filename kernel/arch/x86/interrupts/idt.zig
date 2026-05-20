@@ -63,6 +63,10 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
             pic.sendEOI(1);
         },
         else => {
+            var panicWriter = getPanicWriter();
+            panicWriter.print("Interrupt ");
+            panicWriter.printDec(ctx.int_num);
+            panicWriter.print("\n");
             @panic("Unhandled interrupt!\n");
         },
     }
