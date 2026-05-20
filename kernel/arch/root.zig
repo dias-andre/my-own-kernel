@@ -12,6 +12,7 @@ pub const boot = impl.boot;
 pub const interrupts = impl.interrupts;
 pub const timer = impl.timer;
 pub const io = impl.io;
+pub const hal = impl.hal;
 
 comptime {
     const missing_error = "Architecture missing:";

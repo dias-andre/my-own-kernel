@@ -6,12 +6,12 @@ const mm = @import("kmem");
 
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
 const log = klog.Logger;
+const BootInfo = @import("bootinfo").BootInfo;
 
 extern var _start: u8;
 extern var _end: u8;
 
-export fn kernel_main(rsdp: u64) noreturn {
-    log.init();
+export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
 
@@ -22,17 +22,16 @@ export fn kernel_main(rsdp: u64) noreturn {
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
-
-    log.info("RSDP at {}", .{rsdp});
-    const str = @as([*]u8, @ptrFromInt(rsdp))[0..8];
-    log.info("{}", .{@as([]u8, str)});
+    log.info("Initializing Hardware Abstraction Layer (HAL)", .{});
+    arch.hal.init_hardware(bootinfo.rsdp_addr);
+    log.info("Idle loop...", .{});
     while (true) arch.cpu.idle();
 }
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     // @setCold(true);
     asm volatile ("cli");
-    log.println("==> @panic: {}", .{msg});
+    log.println("PANIC: {}", .{msg});
     while (true) asm volatile ("hlt");
 }
 
