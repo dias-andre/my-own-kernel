@@ -3,89 +3,88 @@
 ![Zig](https://img.shields.io/badge/Made%20with-Zig-orange?style=for-the-badge&logo=zig)
 ![Assembly](https://img.shields.io/badge/Arch-x86__64-blue?style=for-the-badge&logo=intel)
 
-Um kernel experimental escrito do zero, focando em modernidade e segurança de memória. Inicialmente concebido em C, o projeto foi **migrado para Zig** para explorar recursos de linguagem moderna em desenvolvimento de baixo nível (OSDev).
+An experimental kernel written from scratch, focusing on modernity and memory safety. Initially conceived in C, the project was **migrated to Zig** to explore modern language features in low-level development (OSDev).
 
-O objetivo é construir um pequeno sistema operacional x86_64 compatível com Multiboot, implementando gerenciamento de memória, interrupções e drivers básicos.
+The goal is to build a small x86_64 operating system compatible with Multiboot, implementing memory management, interrupts, and basic drivers.
 
 ---
 
 ## 📸 Screenshots
 
-> *Estado atual do kernel executando no QEMU, exibindo a inicialização do Memory Management Subsystem.*
+> *Current state of the kernel running in QEMU, displaying the initialization of the Memory Management Subsystem.*
 
 ![Kernel Screenshot](./docs/print.png)
 
 ---
 
-## 🚀 Status do Projeto
+## 🚀 Project Status
 
-O kernel está na fase de **Preparação para a troca de contexto**.
+The kernel is in the **Context switch preparation** phase.
 
-### ✅ Implementado
-- [x] **Bootloader:** Suporte a Multiboot (GRUB) via Assembly (`multiboot_header.asm`).
-- [x] **Kernel Entry:** Ponto de entrada migrado para Zig (`kernel/main.zig`).
-- [x] **Driver VGA:** Implementação completa em Zig com suporte a cores e strings (`kernel/drivers/vga.zig`).
-- [x] **IDT (Interrupt Descriptor Table):** Tratamento básico de interrupções e exceções implementado em Zig.
-- [x] **Multiboot Parsing:** Leitura do mapa de memória fornecido pelo BIOS/GRUB.
+### ✅ Implemented
+- [x] **Bootloader:** Multiboot support (GRUB) via Assembly (`multiboot_header.asm`).
+- [x] **Kernel Entry:** Entry point migrated to Zig (`kernel/main.zig`).
+- [x] **VGA Driver:** Complete implementation in Zig with color and string support (`kernel/drivers/vga.zig`).
+- [x] **IDT (Interrupt Descriptor Table):** Basic interrupt and exception handling implemented in Zig.
+- [x] **Multiboot Parsing:** Memory map reading provided by BIOS/GRUB.
 - [x] **PMM (Physical Memory Manager):**
-  - Alocador de páginas físicas (4KB).
-  - Uso de **Bitmap** para rastrear memória livre/ocupada.
-  - Proteção de memória do Kernel e do próprio Bitmap.
-- [x] **VMM (Virtual Memory Manager):** Paginação e mapeamento de memória virtual.
-- [x] **Heap Allocator:** Implementação de `kmalloc` e `kfree`.
-- [x] **GDT (Global Descriptor Table):** Refinamento da GDT em Zig.
-- [x] **PIC:** Gerenciar interrupções de hardware.
+  - Physical page allocator (4KB).
+  - **Bitmap** used to track free/used memory.
+  - Kernel and Bitmap memory protection.
+- [x] **VMM (Virtual Memory Manager):** Paging and virtual memory mapping.
+- [x] **Heap Allocator:** Implementation of `kmalloc` and `kfree`.
+- [x] **GDT (Global Descriptor Table):** GDT refinement in Zig.
+- [x] **PIC:** Hardware interrupt management.
 
-### 🚧 Em Progresso
+### 🚧 In Progress
 
-- [ ] **Multithreading:** Gerenciamento de Threads e trocas de contexto.
+- [ ] **Multithreading:** Thread management and context switching.
 
 ---
 
-## 🛠️ Como Compilar e Executar
+## 🛠️ How to Compile and Run
 
-### Dependências
-Para compilar este projeto, você precisará das seguintes ferramentas instaladas no seu Linux (Manjaro/Arch ou similar):
+### Dependencies
+To compile this project, you will need the following tools installed on your Linux (Manjaro/Arch or similar):
 
-* **Zig** (Compilador principal)
-* **NASM** (Assembler para os stubs de boot)
-* **QEMU** (Emulador para testes)
-* **GRUB / xorriso** (Para criar a imagem ISO bootável)
-* **Linker (`ld`)** (Geralmente parte do binutils)
+* **Zig** (Main compiler)
+* **NASM** (Assembler for boot stubs)
+* **QEMU** (Emulator for testing)
+* **GRUB / xorriso** (To create the bootable ISO image)
+* **Linker (`ld`)** (Usually part of binutils)
 
-### Comandos (Makefile)
+### Commands (Makefile)
 
-O projeto utiliza um `Makefile` para facilitar o fluxo de desenvolvimento:
+The project uses a `Makefile` to streamline the development workflow:
 
 ```bash
-# Compilar todo o kernel e gerar a ISO
+# Compile the entire kernel and generate the ISO
 make all
 
-# Compilar e executar imediatamente no QEMU
+# Compile and immediately run in QEMU
 make run
 
-# Limpar arquivos de build (.o, .elf, .iso)
+# Clean build artifacts (.o, .elf, .iso)
 make clean
 
-# Executar em modo Debug (aguarda conexão do GDB)
+# Run in Debug mode (waits for GDB connection)
 make debug
 
 ```
 
 ---
 
-## 📂 Estrutura do Projeto
+## 📂 Project Structure
 
 ```text
 /
 ├── kernel/
-│   ├── arch/x86/        # Código específico de arquitetura (Assembly/GDT/IDT)
-│   ├── mm/              # Gerenciamento de Memória (Heap, VMM, PMM, Bitmap)
-│   ├── drivers/         # Drivers no geral (Teclado, Vídeo, Timer)
-│   ├── utils/           # Utilitários do Kernel (Logger)
-│   ├── main.zig         # Ponto de entrada do Kernel
-│   └── multiboot.zig    # Parsing do cabeçalho Multiboot
-├── linker.ld            # Script de Linkagem
-└── Makefile             # Automação de build
-
+│   ├── arch/x86/        # Architecture-specific code (Assembly/GDT/IDT)
+│   ├── mm/              # Memory Management (Heap, VMM, PMM, Bitmap)
+│   ├── drivers/         # General drivers (Keyboard, Video, Timer)
+│   ├── utils/           # Kernel utilities (Logger)
+│   ├── main.zig         # Kernel entry point
+│   └── multiboot.zig    # Multiboot header parsing
+├── linker.ld            # Linker script
+└── Makefile             # Build automation
 ```
