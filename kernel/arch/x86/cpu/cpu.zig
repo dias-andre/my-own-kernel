@@ -45,12 +45,15 @@ pub fn enable_sse() void {
     asm volatile ("mov %[val], %%cr4"
         :
         : [val] "r" (cr4),
-        : .{ .memory = true }
-    );
+        : .{ .memory = true });
 }
 
 pub fn idle() void {
     asm volatile ("hlt");
+}
+
+pub fn pause() void {
+    asm volatile ("pause");
 }
 
 pub fn disable_interrupts() void {
