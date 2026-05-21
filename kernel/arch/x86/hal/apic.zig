@@ -66,12 +66,10 @@ fn parse_madt(madt: *MADT_Descriptor) void {
         const entry: *MADT_Entry = @ptrFromInt(entry_header_ptr);
         switch (entry_header.type) {
             0 => {
-                log.println("-> Processor Local APIC found!", .{});
-                log.println("   > ACPI Processor ID: {}", .{entry.local_apic.acpi_processor_id});
+                log.println("-> Processor Local APIC found! ACPI Processor ID: {}", .{entry.local_apic.acpi_processor_id});
             },
             1 => {
-                log.println("-> I/O APIC found!", .{});
-                log.println("   > I/O APIC Address: {}", .{@as([*]u8, @ptrFromInt(entry.io_apic.io_apic_address))});
+                log.println("-> I/O APIC found! APIC Address: {}", .{@as([*]u8, @ptrFromInt(entry.io_apic.io_apic_address))});
             },
             else => {},
         }
