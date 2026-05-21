@@ -89,15 +89,14 @@ fn fill_memory(ptr: [*]u8, value: u8, len: usize) void {
 
 pub fn allocate_page() ?usize {
     lock.acquire();
+    defer lock.release();
     var i: usize = 0;
     while (i < total_pages) : (i += 1) {
         if (!test_bit(i)) {
             set_bit(i);
-            lock.release();
             return i * arch.memory.PAGE_SIZE;
         }
     }
-    lock.release();
     return null;
 }
 

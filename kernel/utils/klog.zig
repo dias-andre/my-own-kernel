@@ -19,44 +19,42 @@ pub const Logger = struct {
     var mainLogger: lib.Logging.LoggerPort = undefined;
 
     pub fn init() void {
-        lock.acquire();
         mainLogger = lib.Logging.LoggerPort.create(serialWriter);
-        lock.release();
     }
 
     pub fn info(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.info(fmt, args);
-        lock.release();
     }
 
     pub fn debug(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.debug(fmt, args);
-        lock.release();
     }
 
     pub fn ok(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.ok(fmt, args);
-        lock.release();
     }
 
     pub fn spec(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.spec(fmt, args);
-        lock.release();
     }
 
     pub fn failed(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.failed(fmt, args);
-        lock.release();
     }
 
     pub fn println(comptime fmt: []const u8, args: anytype) void {
         lock.acquire();
+        defer lock.release();
         mainLogger.println(fmt, args);
-        lock.release();
     }
 };

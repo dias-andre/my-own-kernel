@@ -52,6 +52,7 @@ pub const Heap = struct {
 
     pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
         self.lock.acquire();
+        defer self.lock.release();
         if (alignment == 0 or (alignment & (alignment - 1)) != 0) {
             return error.InvalidAlignment;
         }
@@ -88,7 +89,7 @@ pub const Heap = struct {
                         current.has_next = true;
                     }
                     current.free = false;
-                    self.lock.release();
+                    log.debug("HEAP: Memory allocated at address: {}", .{@as([*]u8, @ptrFromInt(aligned_data))});
                     return @ptrFromInt(aligned_data);
                 }
             }
@@ -96,7 +97,6 @@ pub const Heap = struct {
             if (current.has_next) {
                 current = @ptrFromInt(current.next);
             } else {
-                self.lock.release();
                 return error.OutOfMemory;
             }
         }
@@ -108,6 +108,7 @@ pub const Heap = struct {
 
     pub fn free(self: *Heap, ptr: [*]u8) !void {
         self.lock.acquire();
+        defer self.lock.release();
         const addr = @intFromPtr(ptr);
         var search_addr = alignDown(addr - @sizeOf(BlockHeader), 16);
         const min_addr = search_addr -| 64;
@@ -120,7 +121,6 @@ pub const Heap = struct {
 
                 if (addr >= header_data_start and addr < header_data_end) {
                     if (potential_header.free) {
-                        self.lock.release();
                         return error.DoubleFree;
                     }
                     if (potential_header.has_next) {
@@ -133,12 +133,10 @@ pub const Heap = struct {
                     }
 
                     potential_header.free = true;
-                    self.lock.release();
                     return;
                 }
             }
         }
-        self.lock.release();
         return error.InvalidPointer;
     }
 
