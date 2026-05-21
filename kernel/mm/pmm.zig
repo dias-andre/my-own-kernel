@@ -1,5 +1,7 @@
 const log = @import("klog").Logger;
 const arch = @import("arch");
+
+const Spinlock = @import("lib").Atomic.Spinlock;
 const MemoryMap = @import("./memory_map.zig").MemoryMap;
 
 var bitmap: [*]u8 = undefined;
@@ -7,6 +9,7 @@ var bitmap_size: usize = 0;
 var max_phys_addr: usize = 0;
 var total_pages: usize = 0;
 var free_memory_start: usize = 0;
+var lock = Spinlock{};
 
 fn set_bit(bit: usize) void {
     bitmap[bit / 8] |= @as(u8, 1) << @intCast(bit % 8);
@@ -85,19 +88,24 @@ fn fill_memory(ptr: [*]u8, value: u8, len: usize) void {
 }
 
 pub fn allocate_page() ?usize {
+    lock.acquire();
     var i: usize = 0;
     while (i < total_pages) : (i += 1) {
         if (!test_bit(i)) {
             set_bit(i);
+            lock.release();
             return i * arch.memory.PAGE_SIZE;
         }
     }
+    lock.release();
     return null;
 }
 
 pub fn free_page(addr: usize) void {
+    lock.acquire();
     const page_idx = addr / arch.memory.PAGE_SIZE;
     if (page_idx < total_pages) {
         clear_bit(page_idx);
     }
+    lock.release();
 }

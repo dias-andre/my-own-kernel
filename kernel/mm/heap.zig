@@ -1,7 +1,9 @@
-const arch = @import("arch");
-const pmm = @import("pmm.zig");
-const log = @import("klog").Logger;
 const std = @import("std");
+const arch = @import("arch");
+const log = @import("klog").Logger;
+const pmm = @import("pmm.zig");
+
+const Spinlock = @import("lib").Atomic.Spinlock;
 
 pub const BlockHeader = packed struct { size: usize, next: u64, has_next: bool, free: bool, magic: u32 };
 
@@ -23,13 +25,13 @@ pub const Heap = struct {
     head: *BlockHeader,
     page_dir: u64,
     end_addr: usize,
+    lock: Spinlock,
 
     pub fn init(start: usize, initial_size: usize, page_dir: u64, vmmFlags: usize) !Heap {
         var current_virt = start;
         const end_virt = start + initial_size;
 
         log.debug("Heap.init called with: start={} , size={}", .{ start, initial_size });
-        // while(true) arch.cpu.idle();
         while (current_virt < end_virt) : (current_virt += arch.memory.PAGE_SIZE) {
             const phys = pmm.allocate_page() orelse return error.OutOfMemory;
             if ((phys % arch.memory.PAGE_SIZE) != 0) {
@@ -45,10 +47,11 @@ pub const Heap = struct {
         first_block.free = true;
         first_block.magic = 0xc0ffee;
 
-        return Heap{ .head = first_block, .page_dir = page_dir, .end_addr = end_virt };
+        return Heap{ .head = first_block, .page_dir = page_dir, .end_addr = end_virt, .lock = Spinlock{} };
     }
 
     pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
+        self.lock.acquire();
         if (alignment == 0 or (alignment & (alignment - 1)) != 0) {
             return error.InvalidAlignment;
         }
@@ -85,6 +88,7 @@ pub const Heap = struct {
                         current.has_next = true;
                     }
                     current.free = false;
+                    self.lock.release();
                     return @ptrFromInt(aligned_data);
                 }
             }
@@ -92,6 +96,7 @@ pub const Heap = struct {
             if (current.has_next) {
                 current = @ptrFromInt(current.next);
             } else {
+                self.lock.release();
                 return error.OutOfMemory;
             }
         }
@@ -101,7 +106,8 @@ pub const Heap = struct {
         return try self.allocAligned(size, 16);
     }
 
-    pub fn free(_: *Heap, ptr: [*]u8) !void {
+    pub fn free(self: *Heap, ptr: [*]u8) !void {
+        self.lock.acquire();
         const addr = @intFromPtr(ptr);
         var search_addr = alignDown(addr - @sizeOf(BlockHeader), 16);
         const min_addr = search_addr -| 64;
@@ -114,6 +120,7 @@ pub const Heap = struct {
 
                 if (addr >= header_data_start and addr < header_data_end) {
                     if (potential_header.free) {
+                        self.lock.release();
                         return error.DoubleFree;
                     }
                     if (potential_header.has_next) {
@@ -126,10 +133,12 @@ pub const Heap = struct {
                     }
 
                     potential_header.free = true;
+                    self.lock.release();
                     return;
                 }
             }
         }
+        self.lock.release();
         return error.InvalidPointer;
     }
 
