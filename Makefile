@@ -47,6 +47,7 @@ debug: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
 
 # Shows which files Make is seeing (Makefile Debug)
 info:
+	@echo "Current Zig version: $(shell zig version) (recomended: 0.15)"
 	@echo "Zig sources found: $(KERNEL_SOURCES)"
 	@echo "UEFI bootloader sources found: $(UEFI_SOURCES)"
 	@echo "Kernel Directory: $(KERNEL_DIR)"

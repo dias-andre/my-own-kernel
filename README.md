@@ -49,11 +49,11 @@ I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern
 
 | Tool | Purpose |
 |------|---------|
-| **Zig 0.16** | Primary compiler (managed via [zvm](https://github.com/tristanisham/zvm)) |
+| **Zig 0.15** | Primary compiler (managed via [zvm](https://github.com/tristanisham/zvm)) |
 | **QEMU** | Emulator for testing |
 | **OVMF** | UEFI firmware (`/usr/share/edk2/x64/OVMF.4m.fd`) |
 
-> **Important:** The project uses Zig **0.16**. Install it with `zvm install 0.16.0 && zvm use 0.16.0`.
+> **Important:** The project uses Zig **0.15**. Install it with `zvm install 0.15 && zvm use 0.15`.
 
 ### Makefile Targets
 
