@@ -1,7 +1,6 @@
-# 🦎 My Own Kernel (Zig Edition)
+# My Own Kernel (Zig Edition)
 
 ![Zig](https://img.shields.io/badge/Made%20with-Zig-orange?style=for-the-badge&logo=zig)
-![Assembly](https://img.shields.io/badge/Arch-x86__64-blue?style=for-the-badge&logo=intel)
 
 A hobby x86_64 kernel written from scratch in Zig. This is a personal, educational project — I'm building it to learn low-level systems programming, memory management, hardware interfacing, and operating system design using modern tooling.
 
@@ -9,21 +8,21 @@ Initially conceived in C, the project **migrated to Zig** to leverage modern lan
 
 ---
 
-## 📸 Screenshots
+## Screenshots
 
-> *Current state of the kernel running in QEMU, booting via UEFI with the Memory Management Subsystem initializing.*
+> *Current state of the kernel running in QEMU, booting via UEFI with the serial output, printed in stdio*
 
 ![Kernel Screenshot](./docs/print.png)
 
 ---
 
-## 🚀 Project Status
+## Project Status
 
-The kernel boots **natively via UEFI** — no GRUB/Multiboot legacy path. The `make run` target is the primary way to run it.
+The kernel boots **natively via UEFI**. The `make run` target is the primary way to run it.
 
 I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern hardware using the **APIC** (Advanced Programmable Interrupt Controller) instead of the legacy PIC. ACPI tables (RSDP → XSDT → MADT) are already being parsed to discover the APIC base address.
 
-### ✅ Implemented
+### Implemented
 - [x] **UEFI Bootloader:** Hand-written Zig UEFI app loads `kernel.bin` and passes a `BootInfo` struct (memory map, RSDP address).
 - [x] **Physical Memory Manager:** 4KB page bitmap allocator with kernel/bitmap memory protection.
 - [x] **Virtual Memory Manager:** Higher-half 4-level paging (offset `0xFFFF800000000000`).
@@ -38,30 +37,25 @@ I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern
 - [x] **Scheduler:** Round-robin with circular linked-list of threads (no ready threads at boot).
 - [x] **Process Model:** Parent/child/sibling tree, ref-counted, page directory cloning.
 
-### 🚧 In Progress
+### In Progress
 - [ ] **Hardware Abstraction Layer (HAL):** ACPI (RSDP/XSDT/MADT) parsing, APIC discovery and initialization.
 - [ ] **APIC:** Replacing the legacy PIC with the local APIC and I/O APIC for interrupt management.
 
 ---
 
-## 🛠️ How to Build and Run
+## How to Build and Run
 
 ### Dependencies
 
 | Tool | Purpose |
 |------|---------|
 | **Zig 0.16** | Primary compiler (managed via [zvm](https://github.com/tristanisham/zvm)) |
-| **NASM** | Assembler for boot stubs |
 | **QEMU** | Emulator for testing |
-| **Linker (`ld`)** | Part of binutils for the legacy Multiboot path |
 | **OVMF** | UEFI firmware (`/usr/share/edk2/x64/OVMF.4m.fd`) |
-| **xorriso** | ISO creation (legacy Multiboot path only) |
 
 > **Important:** The project uses Zig **0.16**. Install it with `zvm install 0.16.0 && zvm use 0.16.0`.
 
 ### Makefile Targets
-
-The project has moved away from Multiboot/GRUB. The **`run-uefi`** target is the recommended way to run:
 
 ```bash
 # Build and boot via UEFI (recommended)
@@ -79,7 +73,7 @@ make info
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```text
 /
