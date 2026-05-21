@@ -8,8 +8,6 @@ const sys_exit = @import("sys/sys_exit.zig").sys_exit;
 const log = klog.Logger;
 const BootInfo = @import("bootinfo").BootInfo;
 
-const smp = @import("smp");
-
 extern var _end: u8;
 
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
