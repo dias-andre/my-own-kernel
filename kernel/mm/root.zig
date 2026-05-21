@@ -43,6 +43,19 @@ fn init_kernel_heap() void {
         while (true) arch.cpu.idle();
     };
     log.ok("Kernel heap mapped successfully!", .{});
+    log.spec("Testing kernel heap!", .{});
+    const addr = kheap.alloc(4) catch {
+        @panic("Failed to alloc 4 bytes on heap");
+    };
+    log.debug("Allocated heap memory at: {}", .{addr});
+    addr[0] = 23;
+    log.println(" -> Block[0] = {}", .{addr[0]});
+    log.spec("Try free block with address: {}", .{addr});
+    kheap.free(addr) catch {
+        @panic("Failed to free 4 bytes on heap");
+    };
+    log.debug("Block free passed!", .{});
+    log.ok("Heap working!", .{});
 }
 
 pub fn kernel_allocator() std.mem.Allocator {
