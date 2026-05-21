@@ -1,5 +1,8 @@
 const std = @import("std");
 const log = @import("klog").Logger;
+const smp = @import("smp");
+
+const ArchCpuData = @import("./root.zig").ArchCpuData;
 const SDT_Header = @import("acpi.zig").SDT_Header;
 
 pub const MADT_Descriptor = extern struct {
@@ -67,6 +70,14 @@ fn parse_madt(madt: *MADT_Descriptor) void {
         switch (entry_header.type) {
             0 => {
                 log.println("-> Processor Local APIC found! ACPI Processor ID: {}", .{entry.local_apic.acpi_processor_id});
+                const flags = entry.local_apic.flags;
+                if ((flags & 1) != 0 or (flags & 2) != 0) {
+                    const arch_data = ArchCpuData{
+                        .apic_id = entry.local_apic.apic_id,
+                        .acpi_id = entry.local_apic.acpi_processor_id,
+                    };
+                    smp.register_cpu(arch_data);
+                }
             },
             1 => {
                 log.println("-> I/O APIC found! APIC Address: {}", .{@as([*]u8, @ptrFromInt(entry.io_apic.io_apic_address))});
