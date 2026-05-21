@@ -8,7 +8,8 @@ const sys_exit = @import("sys/sys_exit.zig").sys_exit;
 const log = klog.Logger;
 const BootInfo = @import("bootinfo").BootInfo;
 
-extern var _start: u8;
+const smp = @import("smp");
+
 extern var _end: u8;
 
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
@@ -23,6 +24,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
+
     log.info("Initializing Hardware Abstraction Layer (HAL)", .{});
     arch.hal.init_hardware(bootinfo.rsdp_addr);
     log.info("Idle loop...", .{});
@@ -31,9 +33,9 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     // @setCold(true);
-    asm volatile ("cli");
+    arch.cpu.disable_interrupts();
     log.println("PANIC: {}", .{msg});
-    while (true) asm volatile ("hlt");
+    while (true) arch.cpu.idle();
 }
 
 comptime {
