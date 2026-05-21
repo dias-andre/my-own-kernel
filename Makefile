@@ -38,8 +38,12 @@ run: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
 		-serial stdio -display none \
 		-smp 4
 
-debug: $(ISO_FILE)
-	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio -debugcon stdio
+debug: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
+	qemu-system-x86_64 -bios $(UEFI_BIOS) \
+		-drive format=raw,file=fat:rw:$(UEFI_DISK) -net none \
+		-serial stdio -display none \
+		-smp 4 \
+		-d int -no-reboot -no-shutdown
 
 # Shows which files Make is seeing (Makefile Debug)
 info:
