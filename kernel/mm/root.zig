@@ -64,11 +64,3 @@ pub const Flags = struct {
     pub const DATA_USER = READABLE | WRITABLE | USER;
     pub const DATA_KERNEL = WRITABLE;
 };
-
-pub fn alloc_page() !void {
-    return pmm.allocate_page() orelse return error.OutOfMemory;
-}
-
-pub fn free_page(page: u64) void {
-    pmm.free_page(page);
-}
