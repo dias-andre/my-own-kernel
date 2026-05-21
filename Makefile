@@ -33,7 +33,10 @@ $(UEFI_FILE): $(UEFI_SOURCES)
 	cp zig-out/bin/BOOTX64.efi $(UEFI_FILE)
 
 run: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
-	qemu-system-x86_64 -bios $(UEFI_BIOS) -drive format=raw,file=fat:rw:$(UEFI_DISK) -net none -serial stdio -display none
+	qemu-system-x86_64 -bios $(UEFI_BIOS) \
+		-drive format=raw,file=fat:rw:$(UEFI_DISK) -net none \
+		-serial stdio -display none \
+		-smp 4
 
 debug: $(ISO_FILE)
 	qemu-system-x86_64 -drive format=raw,file=$(ISO_FILE) -s -S -d int -serial stdio -debugcon stdio
