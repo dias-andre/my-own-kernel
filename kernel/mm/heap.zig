@@ -89,7 +89,6 @@ pub const Heap = struct {
                         current.has_next = true;
                     }
                     current.free = false;
-                    log.debug("HEAP: Memory allocated at address: {}", .{@as([*]u8, @ptrFromInt(aligned_data))});
                     return @ptrFromInt(aligned_data);
                 }
             }
