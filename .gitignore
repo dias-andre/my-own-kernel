@@ -7,3 +7,4 @@ root_iso/boot/kernel.elf
 /.vscode/*
 *.md
 !README.md
+zls.json
