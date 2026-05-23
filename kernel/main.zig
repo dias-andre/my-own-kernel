@@ -32,7 +32,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
     // @setCold(true);
     arch.cpu.disable_interrupts();
-    log.println("PANIC: {}", .{msg});
+    log.println("PANIC: {s}", .{msg});
     while (true) arch.cpu.idle();
 }
 

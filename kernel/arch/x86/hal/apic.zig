@@ -37,22 +37,25 @@ const MADT_Entry = extern union {
     io_apic: MADT_IO_APIC,
 };
 
+var local_apic_address: u64 = undefined;
+
 pub fn map(madt_ptr: u64) void {
-    log.debug("SDT Header size: {}", .{@sizeOf(SDT_Header)});
-    log.debug("MADT Descriptor size: {}", .{@sizeOf(MADT_Descriptor)});
-    log.debug("APIC Offset: {}", .{@offsetOf(MADT_Descriptor, "local_apic_address")});
+    log.debug("SDT Header size: {d}", .{@sizeOf(SDT_Header)});
+    log.debug("MADT Descriptor size: {d}", .{@sizeOf(MADT_Descriptor)});
+    log.debug("APIC Offset: 0x{x}", .{@offsetOf(MADT_Descriptor, "local_apic_address")});
 
     const madt: *MADT_Descriptor = @ptrFromInt(madt_ptr);
-    log.debug("MADT signature: {}, MADT size: {}", .{ @as([]const u8, madt.header.signature[0..4]), madt.header.length });
+    log.debug("MADT signature: {s}, MADT size: {d}", .{ @as([]const u8, &madt.header.signature), madt.header.length });
     if ((madt.flags & 1) != 0) {
         log.info("Dual 8259 Legacy PICs Installed!", .{});
     }
+    log.info("Local APIC Address found at: 0x{x}", .{madt.local_apic_address});
     parse_madt(madt);
 }
 
 fn parse_madt(madt: *MADT_Descriptor) void {
     log.spec("Parsing MADT entries", .{});
-    log.println("MADT Size: {} bytes", .{madt.header.length});
+    log.println("MADT Size: {d} bytes", .{madt.header.length});
     const total_length = madt.header.length;
     var current_offset: usize = 0x2c;
     const raw_madt = @as([*]const u8, @ptrCast(madt));
@@ -61,15 +64,15 @@ fn parse_madt(madt: *MADT_Descriptor) void {
         const entry_header = @as(*MADT_EntryHeader, @ptrFromInt(entry_header_ptr));
 
         if (entry_header.length == 0) {
-            log.failed("Corrupted MADT entry at offset {}! Length is 0", .{current_offset});
+            log.failed("Corrupted MADT entry at offset 0x{x}! Length is 0", .{current_offset});
             break;
         }
 
-        log.println(" Found entry - Type: {}, Length: {}", .{ entry_header.type, entry_header.length });
+        log.println(" Found entry - Type: {d}, Length: {d}", .{ entry_header.type, entry_header.length });
         const entry: *MADT_Entry = @ptrFromInt(entry_header_ptr);
         switch (entry_header.type) {
             0 => {
-                log.println("-> Processor Local APIC found! ACPI Processor ID: {}", .{entry.local_apic.acpi_processor_id});
+                log.println("-> Processor Local APIC found! ACPI Processor ID: {d}", .{entry.local_apic.acpi_processor_id});
                 const flags = entry.local_apic.flags;
                 if ((flags & 1) != 0 or (flags & 2) != 0) {
                     const arch_data = ArchCpuData{
@@ -80,10 +83,24 @@ fn parse_madt(madt: *MADT_Descriptor) void {
                 }
             },
             1 => {
-                log.println("-> I/O APIC found! APIC Address: {}", .{@as([*]u8, @ptrFromInt(entry.io_apic.io_apic_address))});
+                log.println("-> I/O APIC found! APIC Address: 0x{x}", .{entry.io_apic.io_apic_address});
             },
             else => {},
         }
         current_offset += entry_header.length;
     }
 }
+
+fn write_lapic(base: [*]volatile u32, offset: usize, value: u32) void {
+    base[offset / 4] = value;
+}
+
+// TODO
+// fn wake_ap(lapic_base: [*]volatile u32, apic_id: u8, trampoline_phys: u32) void {
+//     // const vector: u8 = @intCast(trampoline_phys);
+//     // select ap by APIC ID
+//     write_lapic(lapic_base, 0x310, @as(u32, apic_id) << 24);
+//
+//     write_lapic(lapic_base, 0x300, 0x00004500);
+//     // TODO
+// }

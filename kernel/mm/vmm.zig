@@ -15,8 +15,8 @@ pub fn init() void {
     };
     arch.paging.init_page_directory(phys_page_dir);
     log.debug("Page directory initialized!", .{});
-    log.debug("VMM: Allocated page directory at physical address: {}", .{@as(*u64, @ptrFromInt(phys_page_dir))});
-    log.debug("VMM: Is aligned? {}", .{phys_page_dir % arch.memory.PAGE_SIZE == 0});
+    log.debug("VMM: Allocated page directory at physical address: 0x{x}", .{phys_page_dir});
+    log.debug("VMM: Is aligned? {any}", .{phys_page_dir % arch.memory.PAGE_SIZE == 0});
     if ((phys_page_dir % arch.memory.PAGE_SIZE) != 0) @panic("VMM -> Page phys not aligned!");
 
     var idx: usize = 0;
@@ -39,7 +39,7 @@ pub fn init() void {
 
         idx += 1;
     }
-    log.debug("Regions mapped {}", .{idx});
+    log.debug("Regions mapped {d}", .{idx});
     kernel_directory = phys_page_dir;
     log.debug("Loading page directory...", .{});
     arch.paging.load_page_directory(kernel_directory);

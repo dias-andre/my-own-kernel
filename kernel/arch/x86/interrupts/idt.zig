@@ -1,3 +1,4 @@
+const std = @import("std");
 const serial = @import("../serial.zig");
 const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
@@ -64,9 +65,7 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
         },
         else => {
             var panicWriter = getPanicWriter();
-            panicWriter.print("Interrupt ");
-            panicWriter.printDec(ctx.int_num);
-            panicWriter.print("\n");
+            panicWriter.print("Interrupt: {d}\n", .{ctx.int_num}) catch @panic("IDT PanicWriter failed!");
             @panic("Unhandled interrupt!\n");
         },
     }
@@ -78,30 +77,13 @@ fn pageFaultHandler(ctx: *isr_table.TrapFrame) void {
     );
     var panicWriter = getPanicWriter();
 
-    panicWriter.print("[PAGE FAULT] ");
-    panicWriter.print("Failed to access memory at: 0x");
-    panicWriter.printHex(cr2);
-    panicWriter.print("\n");
-
-    panicWriter.print("-> [RIP]: 0x");
-    panicWriter.printHex(ctx.rip);
-
-    panicWriter.print(", [ERROR_CODE]: ");
-    panicWriter.printHex(ctx.error_code);
-    panicWriter.print("\n");
+    panicWriter.print("[PAGE FAULT] Failed to access memory at: 0x{x}\n", .{cr2}) catch @panic("IDT PanicWriter failed!");
+    panicWriter.print("-> [RIP]: 0x{x}, [ERROR_CODE] {d}\n", .{ ctx.rip, ctx.error_code }) catch @panic("IDT PanicWriter failed!");
     @panic(".");
 }
 
-fn getPanicWriter() lib.Io.FormatWriter {
-    return lib.Io.FormatWriter{
-        .inner = lib.Io.Writer{
-            .ptr = undefined,
-            .vtable = &.{
-                .write = &writeChar,
-                .put = &putChar,
-            },
-        },
-    };
+fn getPanicWriter() std.Io.Writer {
+    return lib.Serial.getSerialWriter().interface;
 }
 
 fn putChar(_: *anyopaque, data: u8) void {

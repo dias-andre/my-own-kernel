@@ -50,8 +50,8 @@ pub fn init(ptr: u64) void {
     if (!std.mem.eql(u8, &rsdp.signature, "RSD PTR ")) {
         @panic("RSDP signature is invalid!");
     }
-    log.ok("RSDP signature found at {}", .{rsdp});
-    log.info("RSDP Revision: {}", .{rsdp.revision});
+    log.ok("RSDP signature found at 0x{x}", .{@intFromPtr(rsdp)});
+    log.info("RSDP Revision: {d}", .{rsdp.revision});
 
     var sdt_header: *SDT_Header = undefined;
     var expected_sig: []const u8 = undefined;
@@ -67,11 +67,11 @@ pub fn init(ptr: u64) void {
     }
 
     if (!std.mem.eql(u8, &sdt_header.signature, expected_sig)) {
-        log.failed("Signature error: expected {}, found {}", .{ expected_sig, sdt_header.signature });
+        log.failed("Signature error: expected {s}, found {s}", .{ expected_sig, &sdt_header.signature });
         @panic("Root System Description Table signature is invalid!");
     }
 
-    log.ok("{} signature found at {}", .{ expected_sig, sdt_header });
+    log.ok("{s} signature found at 0x{x}", .{ expected_sig, @intFromPtr(sdt_header) });
     log.spec("Verifying checksum...", .{});
 
     if (!verify_sdt_checksum(sdt_header)) {
@@ -93,10 +93,10 @@ fn find_madt_with_xsdt(ptr: u64) ?u64 {
     for (0..entries) |i| {
         const entry = @as(*SDT_Header, @ptrFromInt(pointers[i]));
         if (std.mem.eql(u8, &entry.signature, "APIC")) {
-            log.ok("MADT (APIC) found at: {}", .{entry});
+            log.ok("MADT (APIC) found at: 0x{x}", .{@intFromPtr(entry)});
             return pointers[i];
         } else {
-            log.debug("Ignored table: {}", .{@as([]const u8, entry.signature[0..4])});
+            log.debug("Ignored table: {s}", .{@as([]const u8, entry.signature[0..4])});
         }
     }
 

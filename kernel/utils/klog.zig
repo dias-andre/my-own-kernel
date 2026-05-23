@@ -1,25 +1,13 @@
 const lib = @import("lib");
-const serial = @import("./serial.zig");
-
-const Writer = lib.Io.Writer;
-const FormatWriter = lib.Io.FormatWriter;
-
-pub fn createSerialLogger() lib.Logging.LoggerPort {
-    return .{
-        .ptr = undefined,
-        .fw = .{
-            .inner = serial.SerialWriter(),
-        },
-    };
-}
+const serial = lib.Serial;
 
 pub const Logger = struct {
     var lock = lib.Atomic.Spinlock{};
-    var serialWriter = serial.SerialWriter();
+    var serialWriter = serial.getSerialWriter();
     var mainLogger: lib.Logging.LoggerPort = undefined;
 
     pub fn init() void {
-        mainLogger = lib.Logging.LoggerPort.create(serialWriter);
+        mainLogger = lib.Logging.LoggerPort.create(&serialWriter.interface);
     }
 
     pub fn info(comptime fmt: []const u8, args: anytype) void {

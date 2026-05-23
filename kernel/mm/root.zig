@@ -19,8 +19,8 @@ pub fn init(kernel_end_addr: usize) void {
 
     const p1 = pmm.allocate_page();
     const p2 = pmm.allocate_page();
-    if (p1) |addr| log.debug("PMM Alloc 1: {}", .{addr}) else log.failed("PMM Alloc 1 FAILED (NULL)", .{});
-    if (p2) |addr| log.debug("PMM Alloc 2: {}", .{addr}) else log.failed("PMM Alloc 2 FAILED (NULL)", .{});
+    if (p1) |addr| log.debug("PMM Alloc 1: {x}", .{addr}) else log.failed("PMM Alloc 1 FAILED (NULL)", .{});
+    if (p2) |addr| log.debug("PMM Alloc 2: {x}", .{addr}) else log.failed("PMM Alloc 2 FAILED (NULL)", .{});
 
     pmm.free_page(p1.?);
     pmm.free_page(p2.?);
@@ -28,7 +28,6 @@ pub fn init(kernel_end_addr: usize) void {
     arch.paging.set_physical_allocator(&pmm.allocate_page);
     vmm.init();
     kernel_page_directory = vmm.kernel_directory;
-    log.debug("Kernel Page Directory: {}", .{kernel_page_directory});
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});
 }
@@ -37,7 +36,7 @@ fn init_kernel_heap() void {
     log.info("Mapping kernel heap", .{});
     const HEAP_START: usize = 0x02000000;
     const HEAP_INITIAL_SIZE: usize = 4096;
-    log.debug("Before init: start={}, size={}", .{ HEAP_START, HEAP_INITIAL_SIZE });
+    log.debug("Before init: start=0x{x}, size={d}", .{ HEAP_START, HEAP_INITIAL_SIZE });
     kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, Flags.DATA_KERNEL) catch {
         log.failed("Failed to initialize Kernel Heap", .{});
         while (true) arch.cpu.idle();
@@ -47,10 +46,10 @@ fn init_kernel_heap() void {
     const addr = kheap.alloc(4) catch {
         @panic("Failed to alloc 4 bytes on heap");
     };
-    log.debug("Allocated heap memory at: {}", .{addr});
+    log.debug("Allocated heap memory at: 0x{x}", .{@intFromPtr(addr)});
     addr[0] = 23;
-    log.println(" -> Block[0] = {}", .{addr[0]});
-    log.spec("Try free block with address: {}", .{addr});
+    log.println(" -> Block[0] = {d}", .{addr[0]});
+    log.spec("Try free block with address: 0x{x}", .{@intFromPtr(addr)});
     kheap.free(addr) catch {
         @panic("Failed to free 4 bytes on heap");
     };

@@ -40,10 +40,10 @@ pub fn init(kernel_end: usize) void {
     bitmap = @ptrFromInt(bitmap_phys_addr);
 
     // DEBUG INFO
-    log.debug("- Total RAM: {}", .{arch.memory.max_ram()});
-    log.debug("- Bitmap size: {} bytes", .{bitmap_size});
-    log.debug("- Regions count: {}", .{memory_map.count});
-    log.debug("- Total pages: {}", .{total_pages});
+    log.debug("- Total RAM: {d}", .{arch.memory.max_ram()});
+    log.debug("- Bitmap size: {d} bytes", .{bitmap_size});
+    log.debug("- Regions count: {d}", .{memory_map.count});
+    log.debug("- Total pages: {d}", .{total_pages});
 
     // @memset
     fill_memory(bitmap, 0xff, bitmap_size);

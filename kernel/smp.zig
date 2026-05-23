@@ -23,7 +23,7 @@ pub fn register_cpu(arch_data: arch.hal.ArchCpuData) void {
         .state = .Offline,
         .logical_id = next_id,
     }) catch |err| {
-        log.failed("ArrayList.append error {}", .{@intFromError(err)});
+        log.failed("ArrayList.append error {d}", .{@intFromError(err)});
         @panic("Failed to register CPU data!");
     };
 }
