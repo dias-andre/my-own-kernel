@@ -54,6 +54,13 @@ var gdt_entries = [_]GdtEntry{
     .{},
 };
 
+pub fn get_gdt_descriptor() GdtDescriptor {
+    return .{
+        .base = @intFromPtr(&gdt_entries),
+        .limit = @sizeOf(@TypeOf(gdt_entries)) - 1,
+    };
+}
+
 pub fn init() void {
     const tss_base = @intFromPtr(&tss_mod.tss);
     const tss_limit = @sizeOf(tss_mod.TaskStateSegment);
