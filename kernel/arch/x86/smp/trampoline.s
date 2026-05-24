@@ -62,6 +62,7 @@ ap_trampoline_64:
 
   # call entrypoint
   movq $cpu_smp_entrypoint, %rax
+  movq $1, 18(%rbx)
   callq *%rax
 
   cli

@@ -101,12 +101,20 @@ pub const LapicRegister = enum(u32) {
     timer_initial_count = 0x380,
     timer_current_count = 0x390,
     timer_divide = 0x3e0,
+    icr_low = 0x300,
+    icr_high = 0x310,
 };
 
 pub fn lapic_write(reg: LapicRegister, value: u32) void {
     const addr = local_apic_address + @intFromEnum(reg);
     const ptr = @as(*volatile u32, @ptrFromInt(addr));
     ptr.* = value;
+}
+
+pub fn lapic_read(reg: LapicRegister) u32 {
+    const addr = local_apic_address + @intFromEnum(reg);
+    const ptr = @as(*volatile u32, @ptrFromInt(addr));
+    return ptr.*;
 }
 
 pub fn send_eoi() void {
