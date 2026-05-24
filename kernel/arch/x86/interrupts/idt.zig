@@ -4,6 +4,7 @@ const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
 const apic = @import("../hal/apic.zig");
 const isr_table = @import("isr_stub_table.zig");
+const pit = @import("../pit.zig");
 
 const IdtEntry = packed struct {
     offset_low: u16,
@@ -49,11 +50,16 @@ pub fn init() void {
 }
 
 export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
-    switch (ctx.int_num) {
+    const vector = @as(u8, @truncate(ctx.int_num));
+    switch (vector) {
         14 => {
             pageFaultHandler(ctx);
         },
         32 => {
+            pit.handle_irq();
+            // apic.send_eoi();
+        },
+        254 => {
             apic.send_eoi();
         },
         else => {
