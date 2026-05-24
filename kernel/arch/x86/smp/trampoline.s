@@ -26,13 +26,17 @@ ap_trampoline_32:
   movw %ax, %es
   movw %ax, %ss
 
+  movl $0x7000, %ebx
+
+  lgdtl 4(%ebx)
+
   # enable PAE
   movl %cr4, %eax
   orl $(1 << 5), %eax
   movl %eax, %cr4
 
   # load cr3
-  movl (ap_cr3_value - ap_trampoline_start + 0x8000), %eax
+  movl 0(%ebx), %eax
   movl %eax, %cr3
 
   # enable EFER.LME
@@ -46,28 +50,22 @@ ap_trampoline_32:
   orl $0x80000001, %eax
   movl %eax, %cr0
 
-  ljmpl $0x08, $(ap_trampoline_64 - ap_trampoline_start + 0x8000)
+  ljmpl $0x18, $(ap_trampoline_64 - ap_trampoline_start + 0x8000)
+
 
 .code64
+.extern cpu_smp_entrypoint
 ap_trampoline_64:
-  # reload real kernel GDT
-  lgdt (kernel_gdt_ptr)
-
   # set stack
-  movq (ap_stack_top - ap_trampoline_start + 0x8000), %rsp
+  movq $0x7000, %rbx
+  movq 10(%rbx), %rsp
 
   # call entrypoint
-  movq (ap_entry_fn - ap_trampoline_start + 0x8000), %rax
+  movq $cpu_smp_entrypoint, %rax
   callq *%rax
 
   cli
   hlt
-
-
-.align 8
-ap_cr3_value:   .long 0
-ap_stack_top:   .quad 0
-ap_entry_fn:    .quad 0
 
 .align 8
 ap_gdt_start:

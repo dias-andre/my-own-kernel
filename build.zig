@@ -41,7 +41,7 @@ pub fn build(b: *std.Build) void {
     const bootinfo_module = b.createModule(.{
         .root_source_file = b.path("kernel/boot/bootinfo.zig"),
     });
-    kernel_module.addAssemblyFile(b.path("kernel/arch/x86/smp/trampline.s"));
+    kernel_module.addAssemblyFile(b.path("kernel/arch/x86/smp/trampoline.s"));
     kernel_module.addImport("bootinfo", bootinfo_module);
 
     const libc_object = createObjectToKernel(b, createKernelModule(b, "kernel/utils/libc_stubs.zig"), "libc.o");
