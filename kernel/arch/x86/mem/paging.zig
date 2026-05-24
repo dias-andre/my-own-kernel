@@ -1,4 +1,6 @@
 const memory = @import("memory.zig");
+const kmem = @import("kmem");
+const Flags = kmem.Flags;
 
 // ==========================================
 // CONSTANTES DE PAGINAÇÃO (FLAGS)
@@ -84,18 +86,6 @@ fn get_pt_index(virt_addr: usize) usize {
     return (virt_addr >> 12) & 0x1ff;
 }
 
-pub const Flags = struct {
-    pub const READABLE: usize = 1 << 0;
-    pub const WRITABLE: usize = 1 << 1;
-    pub const EXECUTABLE: usize = 1 << 2;
-    pub const USER: usize = 1 << 3;
-    pub const MMIO: usize = 1 << 4;
-
-    pub const CODE_USER = READABLE | EXECUTABLE | USER;
-    pub const DATA_USER = WRITABLE | USER;
-    pub const DATA_KERNEL = WRITABLE;
-};
-
 fn generic_to_arch_flags(generic: u64) usize {
     var arch_flags: usize = PAGE_PRESENT;
 
@@ -113,6 +103,10 @@ fn generic_to_arch_flags(generic: u64) usize {
 
     if ((generic & Flags.MMIO) != 0) {
         arch_flags |= (PAGE_CACHE_DISABLE | PAGE_WRITE_THROUGH | PAGE_RW);
+    }
+
+    if ((generic & Flags.NO_CACHE) != 0) {
+        arch_flags |= PAGE_CACHE_DISABLE;
     }
 
     return arch_flags;

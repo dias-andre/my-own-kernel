@@ -71,6 +71,7 @@ pub const Flags = struct {
     pub const EXECUTABLE: usize = 1 << 2;
     pub const USER: usize = 1 << 3;
     pub const MMIO: usize = 1 << 4;
+    pub const NO_CACHE: usize = 1 << 5;
 
     pub const CODE_USER = READABLE | EXECUTABLE | USER;
     pub const DATA_USER = READABLE | WRITABLE | USER;
