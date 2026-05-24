@@ -1,7 +1,8 @@
 const std = @import("std");
 const log = @import("klog").Logger;
 const smp = @import("smp");
-
+const paging = @import("../mem/paging.zig");
+const kmem = @import("kmem");
 const ArchCpuData = @import("./root.zig").ArchCpuData;
 const SDT_Header = @import("acpi.zig").SDT_Header;
 
@@ -39,7 +40,7 @@ const MADT_Entry = extern union {
 
 var local_apic_address: u64 = undefined;
 
-pub fn map(madt_ptr: u64) void {
+pub fn parse_madt(madt_ptr: u64) void {
     log.debug("SDT Header size: {d}", .{@sizeOf(SDT_Header)});
     log.debug("MADT Descriptor size: {d}", .{@sizeOf(MADT_Descriptor)});
     log.debug("APIC Offset: 0x{x}", .{@offsetOf(MADT_Descriptor, "local_apic_address")});
@@ -50,10 +51,11 @@ pub fn map(madt_ptr: u64) void {
         log.info("Dual 8259 Legacy PICs Installed!", .{});
     }
     log.info("Local APIC Address found at: 0x{x}", .{madt.local_apic_address});
-    parse_madt(madt);
-}
-
-fn parse_madt(madt: *MADT_Descriptor) void {
+    local_apic_address = madt.local_apic_address;
+    paging.map(kmem.kernel_pages(), local_apic_address, local_apic_address, kmem.Flags.WRITABLE | kmem.Flags.NO_CACHE) catch {
+        log.failed("Failed to map Local APIC Address to kernel directory!", .{});
+        @panic("Failed to map Local APIC to virtual memory");
+    };
     log.spec("Parsing MADT entries", .{});
     log.println("MADT Size: {d} bytes", .{madt.header.length});
     const total_length = madt.header.length;
@@ -68,11 +70,10 @@ fn parse_madt(madt: *MADT_Descriptor) void {
             break;
         }
 
-        log.println(" Found entry - Type: {d}, Length: {d}", .{ entry_header.type, entry_header.length });
         const entry: *MADT_Entry = @ptrFromInt(entry_header_ptr);
         switch (entry_header.type) {
             0 => {
-                log.println("-> Processor Local APIC found! ACPI Processor ID: {d}", .{entry.local_apic.acpi_processor_id});
+                log.println(" Processor Local APIC found! ACPI Processor ID: {d}", .{entry.local_apic.acpi_processor_id});
                 const flags = entry.local_apic.flags;
                 if ((flags & 1) != 0 or (flags & 2) != 0) {
                     const arch_data = ArchCpuData{
@@ -83,24 +84,38 @@ fn parse_madt(madt: *MADT_Descriptor) void {
                 }
             },
             1 => {
-                log.println("-> I/O APIC found! APIC Address: 0x{x}", .{entry.io_apic.io_apic_address});
+                log.println(" I/O APIC found! APIC Address: 0x{x}", .{entry.io_apic.io_apic_address});
             },
             else => {},
         }
         current_offset += entry_header.length;
     }
+    log.ok("MADT parsing finished!", .{});
 }
 
-fn write_lapic(base: [*]volatile u32, offset: usize, value: u32) void {
-    base[offset / 4] = value;
+pub const LapicRegister = enum(u32) {
+    id = 0x020,
+    eoi = 0x0b0,
+    spurious = 0x0f0,
+    lvt_timer = 0x320,
+    timer_initial_count = 0x380,
+    timer_current_count = 0x390,
+    timer_divide = 0x3e0,
+};
+
+pub fn lapic_write(reg: LapicRegister, value: u32) void {
+    const addr = local_apic_address + @intFromEnum(reg);
+    const ptr = @as(*volatile u32, @ptrFromInt(addr));
+    ptr.* = value;
 }
 
-// TODO
-// fn wake_ap(lapic_base: [*]volatile u32, apic_id: u8, trampoline_phys: u32) void {
-//     // const vector: u8 = @intCast(trampoline_phys);
-//     // select ap by APIC ID
-//     write_lapic(lapic_base, 0x310, @as(u32, apic_id) << 24);
-//
-//     write_lapic(lapic_base, 0x300, 0x00004500);
-//     // TODO
-// }
+pub fn send_eoi() void {
+    lapic_write(.eoi, 0);
+}
+
+pub fn enable_lapic_timer() void {
+    lapic_write(.spurious, 0x100 | 0xFF);
+    lapic_write(.timer_divide, 0x03);
+    lapic_write(.lvt_timer, 0x20000 | 32);
+    lapic_write(.timer_initial_count, 10000000);
+}

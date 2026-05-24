@@ -14,6 +14,8 @@ pub fn init_hardware(rsdp_addr: u64) void {
     cpu.outb(0xA1, 0xFF);
     log.debug("Legacy PIC disabled!", .{});
     acpi.init(rsdp_addr);
-    apic.map(acpi.get_madt_addr());
+    apic.parse_madt(acpi.get_madt_addr());
+    apic.enable_lapic_timer();
+    log.ok("Local APIC Timer enabled!", .{});
     asm volatile ("sti");
 }

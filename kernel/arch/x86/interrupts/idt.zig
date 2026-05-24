@@ -2,10 +2,7 @@ const std = @import("std");
 const serial = @import("../serial.zig");
 const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
-const pic = @import("pic.zig");
-
-const pit = @import("../pit.zig");
-
+const apic = @import("../hal/apic.zig");
 const isr_table = @import("isr_stub_table.zig");
 
 const IdtEntry = packed struct {
@@ -57,11 +54,7 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
             pageFaultHandler(ctx);
         },
         32 => {
-            pic.sendEOI(0);
-            pit.handle_irq();
-        },
-        33 => {
-            pic.sendEOI(1);
+            apic.send_eoi();
         },
         else => {
             var panicWriter = getPanicWriter();
