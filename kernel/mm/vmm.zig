@@ -5,7 +5,7 @@ const Flags = @import("root.zig").Flags;
 const mmap = @import("./memory_map.zig");
 
 pub var is_paging_enabled: bool = false;
-pub var kernel_directory: usize = undefined;
+pub var kernel_directory: u32 = undefined;
 
 pub fn init() void {
     log.info("(VMM) Initializing Virtual Memory Management", .{});
@@ -40,7 +40,7 @@ pub fn init() void {
         idx += 1;
     }
     log.debug("Regions mapped {d}", .{idx});
-    kernel_directory = phys_page_dir;
+    kernel_directory = @intCast(phys_page_dir);
     log.debug("Loading page directory...", .{});
     arch.paging.load_page_directory(kernel_directory);
     arch.paging.set_paging_enabled();

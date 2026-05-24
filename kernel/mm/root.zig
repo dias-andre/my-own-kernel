@@ -9,7 +9,7 @@ pub const heap = @import("heap.zig");
 pub const mmap = @import("memory_map.zig");
 
 var kheap: heap.Heap = undefined;
-var kernel_page_directory: u64 = undefined;
+var kernel_page_directory: u32 = undefined;
 var total_ram: usize = undefined;
 
 pub fn init(kernel_end_addr: usize) void {
@@ -63,6 +63,14 @@ pub fn kernel_allocator() std.mem.Allocator {
 
 pub fn kernel_pages() u64 {
     return kernel_page_directory;
+}
+
+pub fn get_page() ?usize {
+    return pmm.allocate_page();
+}
+
+pub fn free_page(addr: usize) void {
+    pmm.free_page(addr);
 }
 
 pub const Flags = struct {
