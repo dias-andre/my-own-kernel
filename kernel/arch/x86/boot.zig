@@ -5,7 +5,6 @@ const mem = @import("mem/memory.zig");
 const gdt = @import("cpu/gdt.zig");
 const idt = @import("interrupts/idt.zig");
 const cpu = @import("cpu/cpu.zig");
-const serial = @import("serial.zig");
 
 const BootInfo = @import("bootinfo").BootInfo;
 extern fn kernel_main(bootinfo: *BootInfo) noreturn;

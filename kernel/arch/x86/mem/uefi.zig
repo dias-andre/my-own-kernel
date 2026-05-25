@@ -1,6 +1,5 @@
 const uefi = @import("std").os.uefi;
 const mmap = @import("kmem").mmap;
-const serial = @import("../serial.zig");
 
 const MemoryRegion = mmap.MemoryRegion;
 const MemoryMap = mmap.MemoryMap;
@@ -14,7 +13,6 @@ pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescript
 
     while (offset < map_size) : (offset += desc_size) {
         if (idx >= global_map.regions.len) {
-            serial.print("IDX reached regions limit!");
             break;
         }
         // const desc: *uefi.tables.MemoryDescriptor = @ptrFromInt(base_ptr + offset);

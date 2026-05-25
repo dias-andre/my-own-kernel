@@ -1,5 +1,4 @@
 const std = @import("std");
-const serial = @import("../serial.zig");
 const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
 
@@ -84,12 +83,4 @@ fn pageFaultHandler(ctx: *isr_table.TrapFrame) void {
 
 fn getPanicWriter() std.Io.Writer {
     return lib.Serial.getSerialWriter().interface;
-}
-
-fn putChar(_: *anyopaque, data: u8) void {
-    serial.putChar(data);
-}
-
-fn writeChar(_: *anyopaque, data: []const u8) void {
-    serial.print(data);
 }

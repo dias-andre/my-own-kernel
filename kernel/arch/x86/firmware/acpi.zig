@@ -1,4 +1,3 @@
-const serial = @import("../serial.zig");
 const std = @import("std");
 const log = @import("klog");
 
