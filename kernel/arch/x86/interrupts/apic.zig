@@ -3,7 +3,6 @@ const log = @import("klog");
 const smp = @import("smp");
 const kmem = @import("kmem");
 const paging = @import("../mem/paging.zig");
-const pit = @import("../pit.zig");
 const ArchCpuData = @import("../cpu/cpu.zig").ArchCpuData;
 const SDT_Header = @import("../firmware/acpi.zig").SDT_Header;
 
@@ -112,33 +111,18 @@ pub fn parse_madt(madt_ptr: u64) void {
     log.ok("MADT parsing finished!", .{});
 }
 
-pub fn lapic_write(reg: LapicRegister, value: u32) void {
+pub fn get_lapic_address() u64 {
+    return local_apic_address;
+}
+
+pub fn write_reg(reg: LapicRegister, value: u32) void {
     const addr = local_apic_address + @intFromEnum(reg);
     const ptr = @as(*volatile u32, @ptrFromInt(addr));
     ptr.* = value;
 }
 
-pub fn lapic_read(reg: LapicRegister) u32 {
+pub fn read_reg(reg: LapicRegister) u32 {
     const addr = local_apic_address + @intFromEnum(reg);
     const ptr = @as(*volatile u32, @ptrFromInt(addr));
     return ptr.*;
-}
-
-pub fn send_eoi() void {
-    lapic_write(.eoi, 0);
-}
-
-pub fn enable_lapic_timer() void {
-    lapic_write(.spurious, 0x100 | 0xFF);
-    lapic_write(.timer_divide, 0x03);
-    const max_u32 = @import("std").math.maxInt(u32);
-    lapic_write(.timer_initial_count, max_u32);
-    pit.sleep_ms(10);
-    const current_count = lapic_read(.timer_current_count);
-    const ticks_in_10ms = max_u32 - current_count;
-    ticks_per_ms = ticks_in_10ms / 10;
-    log.info("LAPIC Timer: {d} ticks/ms", .{ticks_per_ms});
-    lapic_write(.lvt_timer, 0x20000 | 254);
-    lapic_write(.timer_divide, 0x03);
-    lapic_write(.timer_initial_count, ticks_per_ms);
 }
