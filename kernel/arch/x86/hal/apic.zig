@@ -1,8 +1,9 @@
 const std = @import("std");
 const log = @import("klog").Logger;
 const smp = @import("smp");
-const paging = @import("../mem/paging.zig");
 const kmem = @import("kmem");
+const paging = @import("../mem/paging.zig");
+const pit = @import("../pit.zig");
 const ArchCpuData = @import("./root.zig").ArchCpuData;
 const SDT_Header = @import("acpi.zig").SDT_Header;
 
@@ -38,6 +39,24 @@ const MADT_Entry = extern union {
     io_apic: MADT_IO_APIC,
 };
 
+pub const LapicRegister = enum(u32) {
+    id = 0x020,
+    eoi = 0x0b0,
+    spurious = 0x0f0,
+    lvt_timer = 0x320,
+    timer_initial_count = 0x380,
+    timer_current_count = 0x390,
+    timer_divide = 0x3e0,
+    icr_low = 0x300,
+    icr_high = 0x310,
+};
+
+pub const LAPIC_TimerData = struct {
+    ticks_per_second: u32,
+    clock_in_hz: u32,
+};
+
+var ticks_per_ms: u32 = undefined;
 var local_apic_address: u64 = undefined;
 
 pub fn parse_madt(madt_ptr: u64) void {
@@ -93,18 +112,6 @@ pub fn parse_madt(madt_ptr: u64) void {
     log.ok("MADT parsing finished!", .{});
 }
 
-pub const LapicRegister = enum(u32) {
-    id = 0x020,
-    eoi = 0x0b0,
-    spurious = 0x0f0,
-    lvt_timer = 0x320,
-    timer_initial_count = 0x380,
-    timer_current_count = 0x390,
-    timer_divide = 0x3e0,
-    icr_low = 0x300,
-    icr_high = 0x310,
-};
-
 pub fn lapic_write(reg: LapicRegister, value: u32) void {
     const addr = local_apic_address + @intFromEnum(reg);
     const ptr = @as(*volatile u32, @ptrFromInt(addr));
@@ -124,6 +131,14 @@ pub fn send_eoi() void {
 pub fn enable_lapic_timer() void {
     lapic_write(.spurious, 0x100 | 0xFF);
     lapic_write(.timer_divide, 0x03);
-    lapic_write(.lvt_timer, 0x20000 | 32);
-    lapic_write(.timer_initial_count, 10000000);
+    const max_u32 = @import("std").math.maxInt(u32);
+    lapic_write(.timer_initial_count, max_u32);
+    pit.sleep_ms(10);
+    const current_count = lapic_read(.timer_current_count);
+    const ticks_in_10ms = max_u32 - current_count;
+    ticks_per_ms = ticks_in_10ms / 10;
+    log.info("LAPIC set! V: {d} ticks/ms & {d} ticks/us", .{ ticks_per_ms, ticks_per_ms / 1000 });
+    lapic_write(.lvt_timer, 0x20000 | 254);
+    lapic_write(.timer_divide, 0x03);
+    lapic_write(.timer_initial_count, ticks_per_ms * 1000);
 }
