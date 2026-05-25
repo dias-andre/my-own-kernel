@@ -1,35 +1,31 @@
-ENTRY(start)
+ENTRY(kernel_boot)
 
 SECTIONS {
-    . = 1M;
-    _start = .;
+  . = 0x100000;
+  _start = .;
+  .text : ALIGN(4K) {
+    KEEP(*(.text.kernel_boot))
+    *(.text*)
+  }
 
-    .boot :
-    {
-        /* ensure that the multiboot header is at the beginning */
-        *(.multiboot_header)
-    }
+  .rodata : ALIGN(4K) {
+    *(.rodata*)
+  }
 
-    .text :
-    {
-        *(.text)
-    }
+  .data : ALIGN(4K) { 
+    *(.data*) 
+  }
+  
+  .bss : ALIGN(4K) { 
+    *(COMMON)
+    *(.bss*) 
+  }
 
-    .rodata :
-    {
-        *(.rodata)
-    }
+  _end = .;
 
-    .data :
-    {
-        *(.data)
-    }
-
-    .bss :
-    {
-        *(COMMON)
-        *(.bss)
-    }
-
-    _end = .;
+  /DISCARD/ : {
+        *(.eh_frame*)
+        *(.note*)
+        *(.comment*)
+  }
 }

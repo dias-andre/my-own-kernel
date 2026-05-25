@@ -53,6 +53,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "kmem", .mod = b.createModule(.{ .root_source_file = b.path("kernel/mm/root.zig") }) },
         .{ .name = "klog", .mod = b.createModule(.{ .root_source_file = b.path("kernel/utils/klog.zig") }) },
         .{ .name = "smp", .mod = b.createModule(.{ .root_source_file = b.path("kernel/smp.zig") }) },
+        .{ .name = "khal", .mod = b.createModule(.{ .root_source_file = b.path("kernel/hal/root.zig") }) },
     };
 
     for (module_list) |target_mod| {
@@ -87,7 +88,7 @@ pub fn build(b: *std.Build) void {
     switch (target_kernel_option) {
         .Binary => {
             const kernel_elf = b.addExecutable(.{ .name = "kernel.elf", .root_module = kernel_module });
-            kernel_elf.setLinkerScript(b.path("kernel.ld"));
+            kernel_elf.setLinkerScript(b.path("linker.ld"));
             kernel_elf.pie = false;
             const kernel_bin = kernel_elf.addObjCopy(.{ .format = .bin });
             const install_bin = b.addInstallFile(kernel_bin.getOutput(), "bin/kernel.bin");
