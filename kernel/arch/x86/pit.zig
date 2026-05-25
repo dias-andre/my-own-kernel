@@ -21,13 +21,6 @@ pub fn init(freq: u32) void {
     timer_enabled = true;
 }
 
-pub fn disable() void {
-    asm volatile ("cli");
-    cpu.outb(0x21, 0xFF);
-    cpu.outb(0xA1, 0xFF);
-    asm volatile ("sti");
-}
-
 pub fn handle_irq() void {
     _ = ticks.fetchAdd(1, .monotonic);
     send_eoi();

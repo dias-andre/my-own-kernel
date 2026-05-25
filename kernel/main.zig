@@ -23,8 +23,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
 
-    log.info("Initializing Hardware Abstraction Layer (HAL)", .{});
-    arch.hal.init_hardware(bootinfo.rsdp_addr);
+    arch.firmware.init(bootinfo.rsdp_addr);
     log.info("Idle loop...", .{});
     while (true) arch.cpu.idle();
 }

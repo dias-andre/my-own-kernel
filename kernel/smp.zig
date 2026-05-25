@@ -6,7 +6,7 @@ pub const CpuState = enum { Offline, Online, Halted };
 pub const CpuCore = struct {
     logical_id: u64,
     state: CpuState,
-    data: arch.hal.ArchCpuData,
+    data: arch.cpu.ArchCpuData,
 };
 
 var cpu_list: std.ArrayList(CpuCore) = .empty;
@@ -16,7 +16,7 @@ pub fn init(alloc: std.mem.Allocator) void {
     allocator = alloc;
 }
 
-pub fn register_cpu(arch_data: arch.hal.ArchCpuData) void {
+pub fn register_cpu(arch_data: arch.cpu.ArchCpuData) void {
     const next_id = cpu_list.items.len;
     cpu_list.append(allocator, .{
         .data = arch_data,

@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
     kernel_module.addObject(libc_object);
 
     const module_list = [_]ModuleEntry{
-        .{ .name = "arch", .mod = b.createModule(.{ .root_source_file = b.path("kernel/arch/root.zig") }) },
+        .{ .name = "arch", .mod = b.createModule(.{ .root_source_file = b.path("kernel/arch/x86/impl.zig") }) },
         .{ .name = "lib", .mod = b.createModule(.{ .root_source_file = b.path("kernel/lib/root.zig") }) },
         .{ .name = "kmem", .mod = b.createModule(.{ .root_source_file = b.path("kernel/mm/root.zig") }) },
         .{ .name = "klog", .mod = b.createModule(.{ .root_source_file = b.path("kernel/utils/klog.zig") }) },

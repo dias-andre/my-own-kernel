@@ -5,4 +5,4 @@ pub const boot = @import("boot.zig");
 pub const interrupts = @import("interrupts/interrupts.zig");
 pub const timer = @import("pit.zig");
 pub const io = @import("io.zig");
-pub const hal = @import("hal/root.zig");
+pub const firmware = @import("firmware/root.zig");

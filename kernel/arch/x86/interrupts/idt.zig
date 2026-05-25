@@ -2,7 +2,7 @@ const std = @import("std");
 const serial = @import("../serial.zig");
 const lib = @import("lib");
 const cpu = @import("../cpu/cpu.zig");
-const apic = @import("../hal/apic.zig");
+const apic = @import("./apic.zig");
 const isr_table = @import("isr_stub_table.zig");
 const pit = @import("../pit.zig");
 

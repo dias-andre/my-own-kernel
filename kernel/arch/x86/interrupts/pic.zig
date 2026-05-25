@@ -46,6 +46,13 @@ pub fn remap() void {
     //outb(PIC2_DATA, m2);
 }
 
+pub fn disable() void {
+    asm volatile ("cli");
+    cpu.outb(0x21, 0xFF);
+    cpu.outb(0xA1, 0xFF);
+    asm volatile ("sti");
+}
+
 pub fn sendEOI(irq: u8) void {
     if (irq >= 8) {
         cpu.outb(PIC2_CMD, 0x20);

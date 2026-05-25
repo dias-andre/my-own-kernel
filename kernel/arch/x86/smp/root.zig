@@ -1,7 +1,7 @@
 const kmem = @import("kmem");
 const log = @import("klog").Logger;
 const ksmp = @import("smp");
-const apic = @import("../hal/apic.zig");
+const apic = @import("../interrupts/apic.zig");
 const gdt = @import("../cpu/gdt.zig");
 
 pub const ApMailbox = packed struct {

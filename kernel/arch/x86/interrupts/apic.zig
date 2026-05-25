@@ -4,8 +4,8 @@ const smp = @import("smp");
 const kmem = @import("kmem");
 const paging = @import("../mem/paging.zig");
 const pit = @import("../pit.zig");
-const ArchCpuData = @import("./root.zig").ArchCpuData;
-const SDT_Header = @import("acpi.zig").SDT_Header;
+const ArchCpuData = @import("../cpu/cpu.zig").ArchCpuData;
+const SDT_Header = @import("../firmware/acpi.zig").SDT_Header;
 
 pub const MADT_Descriptor = extern struct {
     header: SDT_Header,
@@ -137,8 +137,8 @@ pub fn enable_lapic_timer() void {
     const current_count = lapic_read(.timer_current_count);
     const ticks_in_10ms = max_u32 - current_count;
     ticks_per_ms = ticks_in_10ms / 10;
-    log.info("LAPIC set! V: {d} ticks/ms & {d} ticks/us", .{ ticks_per_ms, ticks_per_ms / 1000 });
+    log.info("LAPIC Timer: {d} ticks/ms", .{ticks_per_ms});
     lapic_write(.lvt_timer, 0x20000 | 254);
     lapic_write(.timer_divide, 0x03);
-    lapic_write(.timer_initial_count, ticks_per_ms * 1000);
+    lapic_write(.timer_initial_count, ticks_per_ms);
 }

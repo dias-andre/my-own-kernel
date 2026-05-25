@@ -5,6 +5,11 @@ const MSR_STAR = 0xC0000081;
 const MSR_LSTAR = 0xC0000082;
 const MSR_SFMASK = 0xC0000084;
 
+pub const ArchCpuData = struct {
+    apic_id: u32,
+    acpi_id: u32,
+};
+
 pub fn read_cr2() usize {
     var value: usize = 0;
     asm volatile ("mov %%cr2, %[ret]"
