@@ -1,7 +1,7 @@
 const arch = @import("arch");
 const std = @import("std");
 const klog = @import("klog");
-const log = klog.Logger;
+const log = klog;
 
 pub const pmm = @import("pmm.zig");
 pub const vmm = @import("vmm.zig");

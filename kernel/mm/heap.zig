@@ -1,6 +1,6 @@
 const std = @import("std");
 const arch = @import("arch");
-const log = @import("klog").Logger;
+const log = @import("klog");
 const pmm = @import("pmm.zig");
 
 const Spinlock = @import("lib").Atomic.Spinlock;

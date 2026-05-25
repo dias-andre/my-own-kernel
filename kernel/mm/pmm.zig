@@ -1,4 +1,4 @@
-const log = @import("klog").Logger;
+const log = @import("klog");
 const arch = @import("arch");
 
 const Spinlock = @import("lib").Atomic.Spinlock;

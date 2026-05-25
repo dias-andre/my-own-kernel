@@ -1,6 +1,6 @@
 const arch = @import("arch");
 const pmm = @import("pmm.zig");
-const log = @import("klog").Logger;
+const log = @import("klog");
 const Flags = @import("root.zig").Flags;
 const mmap = @import("./memory_map.zig");
 

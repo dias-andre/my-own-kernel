@@ -1,5 +1,5 @@
 const std = @import("std");
-const log = @import("klog").Logger;
+const log = @import("klog");
 const smp = @import("smp");
 const kmem = @import("kmem");
 const paging = @import("../mem/paging.zig");

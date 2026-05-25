@@ -1,6 +1,6 @@
 const std = @import("std");
 const arch = @import("arch");
-const log = @import("klog").Logger;
+const log = @import("klog");
 
 pub const CpuState = enum { Offline, Online, Halted };
 pub const CpuCore = struct {

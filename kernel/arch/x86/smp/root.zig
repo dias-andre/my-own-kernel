@@ -1,5 +1,5 @@
 const kmem = @import("kmem");
-const log = @import("klog").Logger;
+const log = @import("klog");
 const ksmp = @import("smp");
 const apic = @import("../interrupts/apic.zig");
 const gdt = @import("../cpu/gdt.zig");

@@ -1,5 +1,5 @@
 const uefi = @import("std").os.uefi;
-const log = @import("klog").Logger;
+const log = @import("klog");
 
 const mem = @import("mem/memory.zig");
 const gdt = @import("cpu/gdt.zig");

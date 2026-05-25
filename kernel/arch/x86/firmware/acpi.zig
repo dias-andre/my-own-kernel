@@ -1,6 +1,6 @@
 const serial = @import("../serial.zig");
 const std = @import("std");
-const log = @import("klog").Logger;
+const log = @import("klog");
 
 const RSDP_Descriptor = extern struct {
     signature: [8]u8 align(1), //length 8

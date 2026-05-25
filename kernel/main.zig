@@ -5,7 +5,7 @@ const klog = @import("klog");
 const mm = @import("kmem");
 const smp = @import("smp");
 const sys_exit = @import("sys/sys_exit.zig").sys_exit;
-const log = klog.Logger;
+const log = klog;
 const BootInfo = @import("bootinfo").BootInfo;
 
 extern var _end: u8;

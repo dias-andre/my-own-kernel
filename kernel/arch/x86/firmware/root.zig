@@ -1,4 +1,4 @@
-const log = @import("klog").Logger;
+const log = @import("klog");
 const acpi = @import("./acpi.zig");
 const apic = @import("../interrupts/apic.zig");
 const cpu = @import("../cpu/cpu.zig");
