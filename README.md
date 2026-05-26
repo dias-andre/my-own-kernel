@@ -12,7 +12,7 @@ Initially conceived in C, the project **migrated to Zig** to leverage modern lan
 
 > *Current state of the kernel running in QEMU, booting via UEFI with the serial output, printed in stdio*
 
-![Kernel Screenshot](./docs/stdio_output.png)
+![Kernel Screenshot](./docs/print.png)
 
 ---
 
