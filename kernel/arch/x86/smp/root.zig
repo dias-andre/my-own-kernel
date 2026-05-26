@@ -22,7 +22,7 @@ extern var ap_trampoline_start: u8;
 extern var ap_trampoline_end: u8;
 
 pub fn prepare() void {
-    log.info("Copy trampoline to low memory: 0x{x} -> 0x{x}", .{ @intFromPtr(&ap_trampoline_start), TRAMPOLINE_PHYS_ADDR });
+    log.info("Copying trampoline to low memory: 0x{x} -> 0x{x}", .{ @intFromPtr(&ap_trampoline_start), TRAMPOLINE_PHYS_ADDR });
     copy_trampoline_to_low_memory();
     log.ok("Copy finished!", .{});
 }

@@ -32,20 +32,20 @@ pub fn enable() void {
     log.info("Starting kernel Symmetric Multiprocessing!", .{});
     const cpu_count = cpu_list.items.len;
     log.println(" Found {d} CPU cores.", .{cpu_count});
-    log.debug("Prepare to Wake Up machine cores...", .{});
+    log.debug("Preparing to wake up machine cores...", .{});
     arch.smp.prepare();
     log.debug("Start!", .{});
     for (0..cpu_count) |idx| {
         var core = cpu_list.items.ptr[idx];
         if (core.logical_id == 0) {
-            log.println("BSP ignored.", .{});
+            log.println("Skipping BSP (already awake)", .{});
             core.state = .Online;
             continue;
         }
-        log.println("Sending wake up signal to core {d}", .{core.logical_id});
+        log.println("Sending wake-up signal to core {d}", .{core.logical_id});
         arch.smp.wake_up_ap(core.data);
         core.state = .Halted;
-        log.println(" - Finished! Core {d} halted!", .{core.logical_id});
+        log.println(" - Core {d} is online and idling!", .{core.logical_id});
     }
     log.ok("Kernel multiprocessing enabled!", .{});
 }

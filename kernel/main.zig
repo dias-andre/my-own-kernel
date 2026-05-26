@@ -22,7 +22,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
 
     arch.firmware.init(bootinfo.rsdp_addr);
     smp.enable();
-    log.info("Idle loop...", .{});
+    log.info("Entering idle loop...", .{});
     while (true) arch.cpu.idle();
 }
 
