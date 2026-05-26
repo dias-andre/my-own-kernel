@@ -1,11 +1,8 @@
 const std = @import("std");
 const arch = @import("arch");
-const klog = @import("klog");
-
 const mm = @import("kmem");
 const smp = @import("smp");
-const sys_exit = @import("sys/sys_exit.zig").sys_exit;
-const log = klog;
+const log = @import("klog");
 const BootInfo = @import("bootinfo").BootInfo;
 
 extern var _end: u8;
@@ -24,6 +21,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.ok("System calls enabled! ", .{});
 
     arch.firmware.init(bootinfo.rsdp_addr);
+    smp.enable();
     log.info("Idle loop...", .{});
     while (true) arch.cpu.idle();
 }
