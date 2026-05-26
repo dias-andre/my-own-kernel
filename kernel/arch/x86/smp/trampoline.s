@@ -50,7 +50,7 @@ ap_trampoline_32:
   orl $0x80000001, %eax
   movl %eax, %cr0
 
-  ljmpl $0x18, $(ap_trampoline_64 - ap_trampoline_start + 0x8000)
+  ljmpl $0x08, $(ap_trampoline_64 - ap_trampoline_start + 0x8000)
 
 
 .code64
@@ -62,7 +62,6 @@ ap_trampoline_64:
 
   # call entrypoint
   movq $cpu_smp_entrypoint, %rax
-  movq $1, 18(%rbx)
   callq *%rax
 
   cli
