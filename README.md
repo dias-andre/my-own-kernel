@@ -20,26 +20,21 @@ Initially conceived in C, the project **migrated to Zig** to leverage modern lan
 
 The kernel boots **natively via UEFI**. The `make run` target is the primary way to run it.
 
-I am currently implementing a **Hardware Abstraction Layer (HAL)** to map modern hardware using the **APIC** (Advanced Programmable Interrupt Controller) instead of the legacy PIC. ACPI tables (RSDP → XSDT → MADT) are already being parsed to discover the APIC base address.
-
 ### Implemented
-- [x] **UEFI Bootloader:** Hand-written Zig UEFI app loads `kernel.bin` and passes a `BootInfo` struct (memory map, RSDP address).
+- [x] **UEFI Bootloader:** Hand-written Zig UEFI app loads `kernel.bin` and passes a `BootInfo` struct.
 - [x] **Physical Memory Manager:** 4KB page bitmap allocator with kernel/bitmap memory protection.
 - [x] **Virtual Memory Manager:** Higher-half 4-level paging (offset `0xFFFF800000000000`).
-- [x] **Heap Allocator:** Linked-list `kmalloc`/`kfree` with block magic (`0xc0ffee`).
+- [x] **Heap Allocator:** Implementation of `std.mem.Allocator` with a Linked-List.
 - [x] **GDT:** Kernel code/data, user code/data, TSS.
 - [x] **IDT:** Full 256-entry table generated at compile time from assembly stubs.
 - [x] **PIC (legacy):** IRQ remapping (master 0x20, slave 0xA0).
-- [x] **PIT Timer:** Programmable Interval Timer at 100 Hz.
-- [x] **PS/2 Keyboard Driver:** Interrupt-driven input.
-- [x] **VGA Text Mode Driver:** Colored console output (via 0xB8000 mapped at 0xC00B8000).
+- [x] **PIT Timer:** Programmable Interval Timer at 1000 Hz.
 - [x] **Syscall Infrastructure:** `swapgs`/`sysretq` entry, handlers for `exit`, `yield`, `sleep`.
-- [x] **Scheduler:** Round-robin with circular linked-list of threads (no ready threads at boot).
-- [x] **Process Model:** Parent/child/sibling tree, ref-counted, page directory cloning.
-
+- [x] **Hardware Abstraction Layer (HAL):** ACPI (RSDP/XSDT/MADT) parsing and initial APIC topology discovery.
+- [x] **Symmetric Multiprocessing (SMP):** Send wake-up signals for each core.
 ### In Progress
-- [ ] **Hardware Abstraction Layer (HAL):** ACPI (RSDP/XSDT/MADT) parsing, APIC discovery and initialization.
 - [ ] **APIC:** Replacing the legacy PIC with the local APIC and I/O APIC for interrupt management.
+- [ ] **Multicore Scheduler:** Evolving the task scheduler to handle thread dispatching and context switching across multiple APs (Application Processors) now that SMP is initialized.
 
 ---
 
@@ -79,22 +74,20 @@ make info
 /
 ├── kernel/
 │   ├── arch/x86/        # Architecture-specific code (GDT, IDT, paging, syscall ABI, boot)
-│   │   ├── hal/         # Hardware Abstraction Layer (ACPI → APIC)
-│   │   ├── interrupts/  # PIC, IDT stubs
+│   │   ├── firmware/    # Firmware core (ACPI)
+│   │   ├── interrupts/  # PIC, APIC and IDT stubs
 │   │   ├── mem/         # Paging, memory layout
 │   │   ├── cpu/         # CPU features (GDT, TSS, syscalls)
 │   │   └── sys/         # Syscall entry/context
 │   ├── boot/            # UEFI bootloader (start.zig) + BootInfo shared struct
-│   ├── drivers/         # VGA, keyboard, timer
-│   ├── hal/             # Interface definitions (e.g., InterruptController)
+│   ├── hal/             # Interface definitions (e.g., TimerSource)
 │   ├── mm/              # Memory management (PMM, VMM, heap)
 │   ├── proc/            # Process manager
 │   ├── sch/             # Scheduler + context switch
 │   ├── sys/             # Syscall handlers
-│   ├── utils/           # Logger, VGA, serial, libc stubs
-│   └── lib/             # Generic library code (I/O, logging helpers)
+│   ├── utils/           # Logger│   
+    └── lib/             # Generic library code (I/O, logging helpers)
 ├── build.zig            # Zig build system (cross-compilation, UEFI target)
-├── kernel.ld            # Linker script (UEFI boot path)
-├── linker.ld            # Linker script (legacy Multiboot path)
+├── linker.ld            # Linker script (UEFI boot path)
 └── Makefile             # Build automation
 ```
