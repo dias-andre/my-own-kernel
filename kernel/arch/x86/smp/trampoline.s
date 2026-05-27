@@ -60,6 +60,11 @@ ap_trampoline_64:
   movq $0x7000, %rbx
   movq 10(%rbx), %rsp
 
+  movl $1, %eax
+  cpuid
+  shrl $24, %ebx
+  
+  movq %rbx, %rdi
   # call entrypoint
   movq $cpu_smp_entrypoint, %rax
   callq *%rax

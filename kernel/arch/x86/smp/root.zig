@@ -64,7 +64,10 @@ fn copy_trampoline_to_low_memory() void {
     @memcpy(@constCast(dst), src);
 }
 
-export fn cpu_smp_entrypoint() void {
+// Each core has the same CR3 and the same GDT
+export fn cpu_smp_entrypoint(_: u64) void {
+    cpu.enable_sse();
+    // log.println(" Hello from CPU Core {d}!", .{apic_id});
     mailbox.is_awake = 1;
     while (true) {
         asm volatile ("hlt");
