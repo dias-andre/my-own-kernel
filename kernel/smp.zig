@@ -1,42 +1,32 @@
 const std = @import("std");
 const arch = @import("arch");
 const log = @import("klog");
+const khal = @import("khal");
+
+const TimerSource = @import("khal").TimerSource;
 
 pub const CpuState = enum { Offline, Online, Halted };
+
 pub const CpuCore = struct {
     logical_id: u64,
     state: CpuState,
     data: arch.cpu.ArchCpuData,
+    timer: khal.TimerSource,
+    tickCount: std.atomic.Value(u64),
 };
 
-var cpu_list: std.ArrayList(CpuCore) = .empty;
-var allocator: std.mem.Allocator = undefined;
-
-pub fn init(alloc: std.mem.Allocator) void {
-    allocator = alloc;
-}
-
-pub fn register_cpu(arch_data: arch.cpu.ArchCpuData) void {
-    const next_id = cpu_list.items.len;
-    cpu_list.append(allocator, .{
-        .data = arch_data,
-        .state = .Offline,
-        .logical_id = next_id,
-    }) catch |err| {
-        log.failed("ArrayList.append error {d}", .{@intFromError(err)});
-        @panic("Failed to register CPU data!");
-    };
-}
+const MAX_CPUS = 256;
+var cpu_cores: [MAX_CPUS]CpuCore = undefined;
+var cpu_count: usize = 0;
 
 pub fn enable() void {
     log.info("Starting kernel Symmetric Multiprocessing!", .{});
-    const cpu_count = cpu_list.items.len;
     log.println(" Found {d} CPU cores.", .{cpu_count});
     log.debug("Preparing to wake up machine cores...", .{});
     arch.smp.prepare();
     log.debug("Start!", .{});
     for (0..cpu_count) |idx| {
-        var core = cpu_list.items.ptr[idx];
+        var core = &cpu_cores[idx];
         if (core.logical_id == 0) {
             log.println("Skipping BSP (already awake)", .{});
             core.state = .Online;
@@ -45,11 +35,32 @@ pub fn enable() void {
         log.println("Sending wake-up signal to core {d}", .{core.logical_id});
         arch.smp.wake_up_ap(core.data);
         core.state = .Halted;
-        log.println(" - Core {d} is online and idling!", .{core.logical_id});
+        log.println(" - Core {d} is awake and idling!", .{core.logical_id});
     }
     log.ok("Kernel multiprocessing enabled!", .{});
 }
 
+pub fn register_cpu(arch_data: arch.cpu.ArchCpuData) void {
+    if (cpu_count >= MAX_CPUS) @panic("Too many CPUs!");
+    const cpu = &cpu_cores[cpu_count];
+    cpu.data = arch_data;
+    cpu.state = .Offline;
+    cpu.logical_id = cpu_count;
+    cpu.tickCount = std.atomic.Value(u64).init(0);
+    cpu.timer = arch.smp.getCpuCoreTimerSource(&cpu.tickCount);
+    cpu_count += 1;
+}
+
+//// Returns the current core
+pub fn get_current_core() *CpuCore {
+    const cpuid = arch.smp.get_cpuid();
+    for (0..cpu_count) |idx| {
+        const cpu = cpu_cores[idx];
+        if (cpu.logical_id == cpuid) return &cpu_cores[idx];
+    }
+    @panic("CpuCore not found!");
+}
+
 pub fn get_cpus() []const CpuCore {
-    return cpu_list.items;
+    return cpu_cores[0..cpu_count];
 }

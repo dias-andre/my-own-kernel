@@ -2,6 +2,7 @@ const std = @import("std");
 const arch = @import("arch");
 const mm = @import("kmem");
 const smp = @import("smp");
+const ktimer = @import("ktimer");
 const log = @import("klog");
 const BootInfo = @import("bootinfo").BootInfo;
 
@@ -10,7 +11,6 @@ extern var _end: u8;
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
-    smp.init(mm.kernel_allocator());
 
     log.info("Enabling Interrupts...", .{});
     arch.interrupts.init();
@@ -22,6 +22,13 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
 
     arch.firmware.init(bootinfo.rsdp_addr);
     smp.enable();
+    log.spec("Reading core ticks", .{});
+    log.println(" Sleep for 2 seconds", .{});
+    ktimer.sleep_ms(2000);
+    for (smp.get_cpus()) |core| {
+        const tickCount = core.tickCount.load(.monotonic);
+        log.println(" Core {d} has tick count: {d}", .{ core.logical_id, tickCount });
+    }
     log.info("Entering idle loop...", .{});
     while (true) arch.cpu.idle();
 }

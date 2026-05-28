@@ -2,6 +2,7 @@ const std = @import("std");
 const log = @import("klog");
 const smp = @import("smp");
 const kmem = @import("kmem");
+const cpu = @import("../cpu/cpu.zig");
 const paging = @import("../mem/paging.zig");
 const ArchCpuData = @import("../cpu/cpu.zig").ArchCpuData;
 const SDT_Header = @import("../firmware/acpi.zig").SDT_Header;
@@ -48,11 +49,6 @@ pub const LapicRegister = enum(u32) {
     timer_divide = 0x3e0,
     icr_low = 0x300,
     icr_high = 0x310,
-};
-
-pub const LAPIC_TimerData = struct {
-    ticks_per_second: u32,
-    clock_in_hz: u32,
 };
 
 var ticks_per_ms: u32 = undefined;
@@ -109,6 +105,15 @@ pub fn parse_madt(madt_ptr: u64) void {
         current_offset += entry_header.length;
     }
     log.ok("MADT parsing finished!", .{});
+}
+
+pub fn enable() void {
+    write_reg(.spurious, 0x100 | 0xff);
+}
+
+pub fn enable_hardware_msr() void {
+    const msr = cpu.read_msr(0x1B);
+    cpu.write_msr(0x1B, msr | (1 << 11));
 }
 
 pub fn get_lapic_address() u64 {

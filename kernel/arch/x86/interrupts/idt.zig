@@ -60,7 +60,7 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
             // apic.send_eoi();
         },
         254 => {
-            lapic_timer.send_eoi();
+            lapic_timer.handle_interrupt();
         },
         else => {
             var panicWriter = getPanicWriter();

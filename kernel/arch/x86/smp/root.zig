@@ -1,7 +1,11 @@
+const std = @import("std");
 const kmem = @import("kmem");
 const log = @import("klog");
 const ksmp = @import("smp");
 const ktimer = @import("ktimer");
+const khal = @import("khal");
+const lapic_timer = @import("../timers/lapic_timer.zig");
+const idt = @import("../interrupts/idt.zig");
 const apic = @import("../interrupts/apic.zig");
 const cpu = @import("../cpu/cpu.zig");
 const gdt = @import("../cpu/gdt.zig");
@@ -25,6 +29,10 @@ pub fn prepare() void {
     log.info("Copying trampoline to low memory: 0x{x} -> 0x{x}", .{ @intFromPtr(&ap_trampoline_start), TRAMPOLINE_PHYS_ADDR });
     copy_trampoline_to_low_memory();
     log.ok("Copy finished!", .{});
+}
+
+pub fn get_cpuid() u32 {
+    return apic.read_reg(.id) >> 24;
 }
 
 pub fn wake_up_ap(data: cpu.ArchCpuData) void {
@@ -53,7 +61,6 @@ pub fn wake_up_ap(data: cpu.ArchCpuData) void {
     while (mailbox.is_awake == 0) {
         ktimer.sleep_ms(1);
     }
-    // log.println(" Core with APIC_ID {d} is online!", .{data.apic_id});
 }
 
 fn copy_trampoline_to_low_memory() void {
@@ -64,10 +71,24 @@ fn copy_trampoline_to_low_memory() void {
     @memcpy(@constCast(dst), src);
 }
 
+pub fn getCpuCoreTimerSource(tickPtr: *std.atomic.Value(u64)) khal.TimerSource {
+    return .{
+        .ptr = tickPtr,
+        .vtable = &.{
+            .implSleepMs = &lapic_timer.implSleepMs,
+            .implSleepUs = &lapic_timer.implSleepUs,
+        },
+    };
+}
+
 // Each core has the same CR3 and the same GDT
 export fn cpu_smp_entrypoint(_: u64) void {
     cpu.enable_sse();
-    // log.println(" Hello from CPU Core {d}!", .{apic_id});
+    idt.init();
+    cpu.enable_interrupts();
+    apic.enable_hardware_msr();
+    apic.enable();
+    lapic_timer.enable(); // enable per processor timer
     mailbox.is_awake = 1;
     while (true) {
         asm volatile ("hlt");
