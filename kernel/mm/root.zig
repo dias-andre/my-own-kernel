@@ -3,9 +3,9 @@ const std = @import("std");
 const klog = @import("klog");
 const log = klog;
 
-pub const pmm = @import("pmm.zig");
-pub const vmm = @import("vmm.zig");
-pub const heap = @import("heap.zig");
+const pmm = @import("pmm.zig");
+const vmm = @import("vmm.zig");
+const heap = @import("heap.zig");
 pub const mmap = @import("memory_map.zig");
 
 var kheap: heap.Heap = undefined;
@@ -43,16 +43,14 @@ fn init_kernel_heap() void {
     };
     log.ok("Kernel heap mapped successfully!", .{});
     log.spec("Testing kernel heap!", .{});
-    const addr = kheap.alloc(4) catch {
+    const addr = kheap.allocator().rawAlloc(4, std.mem.Alignment.@"16", 0) orelse {
         @panic("Failed to alloc 4 bytes on heap");
     };
     log.debug("Allocated heap memory at: 0x{x}", .{@intFromPtr(addr)});
     addr[0] = 23;
     log.println(" -> Block[0] = {d}", .{addr[0]});
     log.spec("Try free block with address: 0x{x}", .{@intFromPtr(addr)});
-    kheap.free(addr) catch {
-        @panic("Failed to free 4 bytes on heap");
-    };
+    kheap.allocator().rawFree(addr[0..4], std.mem.Alignment.@"16", 0);
     log.debug("Block free passed!", .{});
     log.ok("Heap working!", .{});
 }
