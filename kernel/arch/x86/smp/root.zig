@@ -28,7 +28,7 @@ extern var ap_trampoline_end: u8;
 pub fn prepare() void {
     log.info("Copying trampoline to low memory: 0x{x} -> 0x{x}", .{ @intFromPtr(&ap_trampoline_start), TRAMPOLINE_PHYS_ADDR });
     copy_trampoline_to_low_memory();
-    log.ok("Copy finished!", .{});
+    log.ok("Copy complete!", .{});
 }
 
 pub fn get_cpuid() u32 {

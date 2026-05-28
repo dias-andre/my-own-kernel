@@ -22,15 +22,19 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
 
     arch.firmware.init(bootinfo.rsdp_addr);
     smp.enable();
-    log.spec("Reading core ticks", .{});
-    log.println(" Sleep for 2 seconds", .{});
-    ktimer.sleep_ms(2000);
+    check_per_core_timer();
+    log.info("Entering idle loop...", .{});
+    while (true) arch.cpu.idle();
+}
+
+fn check_per_core_timer() void {
+    log.spec("Checking per-core timers", .{});
+    log.println(" Waiting 2 seconds using the BSP per-core timer", .{});
+    ktimer.PerCoreTimer.sleep_ms(2000);
     for (smp.get_cpus()) |core| {
         const tickCount = core.tickCount.load(.monotonic);
         log.println(" Core {d} has tick count: {d}", .{ core.logical_id, tickCount });
     }
-    log.info("Entering idle loop...", .{});
-    while (true) arch.cpu.idle();
 }
 
 pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
