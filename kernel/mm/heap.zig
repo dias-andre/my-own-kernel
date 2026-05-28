@@ -5,17 +5,17 @@ const pmm = @import("pmm.zig");
 
 const Spinlock = @import("lib").Atomic.Spinlock;
 
-pub const BlockHeader = packed struct { size: usize, next: u64, has_next: bool, free: bool, magic: u32 };
+const BlockHeader = packed struct { size: usize, next: u64, has_next: bool, free: bool, magic: u32 };
 
-pub fn alignUp(addr: usize, alignment: usize) usize {
+fn alignUp(addr: usize, alignment: usize) usize {
     return (addr + alignment - 1) & ~(alignment - 1);
 }
 
-pub fn alignDown(addr: usize, alignment: usize) usize {
+fn alignDown(addr: usize, alignment: usize) usize {
     return addr & ~(alignment - 1);
 }
 
-pub fn isAligned(addr: usize, alignment: usize) bool {
+fn isAligned(addr: usize, alignment: usize) bool {
     return (addr & (alignment - 1)) == 0;
 }
 
@@ -50,7 +50,7 @@ pub const Heap = struct {
         return Heap{ .head = first_block, .page_dir = page_dir, .end_addr = end_virt, .lock = Spinlock{} };
     }
 
-    pub fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
+    fn allocAligned(self: *Heap, size: usize, alignment: usize) ![*]u8 {
         self.lock.acquire();
         defer self.lock.release();
         if (alignment == 0 or (alignment & (alignment - 1)) != 0) {
@@ -101,11 +101,11 @@ pub const Heap = struct {
         }
     }
 
-    pub fn alloc(self: *Heap, size: usize) ![*]u8 {
+    fn alloc(self: *Heap, size: usize) ![*]u8 {
         return try self.allocAligned(size, 16);
     }
 
-    pub fn free(self: *Heap, ptr: [*]u8) !void {
+    fn free(self: *Heap, ptr: [*]u8) !void {
         self.lock.acquire();
         defer self.lock.release();
         const addr = @intFromPtr(ptr);
@@ -152,38 +152,41 @@ pub const Heap = struct {
         .remap = implRemap,
         .free = implFree,
     };
-
-    fn implAlloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
-        var self: *Heap = @ptrCast(@alignCast(ctx));
-        _ = ret_addr;
-        return self.allocAligned(len, ptr_align.toByteUnits()) catch null;
-    }
-
-    fn implResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
-        _ = ctx;
-        _ = buf;
-        _ = buf_align;
-        _ = new_len;
-        _ = ret_addr;
-        return false;
-    }
-
-    fn implFree(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
-        var self: *Heap = @ptrCast(@alignCast(ctx));
-        _ = buf_align;
-        _ = ret_addr;
-
-        self.free(buf.ptr) catch |err| {
-            log.failed("Allocator Free Error: {}", .{err});
-        };
-    }
-
-    fn implRemap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
-        _ = ctx;
-        _ = memory;
-        _ = alignment;
-        _ = new_len;
-        _ = ret_addr;
-        return null;
-    }
 };
+
+fn implAlloc(ctx: *anyopaque, len: usize, ptr_align: std.mem.Alignment, ret_addr: usize) ?[*]u8 {
+    var self: *Heap = @ptrCast(@alignCast(ctx));
+    _ = ret_addr;
+    return self.allocAligned(len, ptr_align.toByteUnits()) catch null;
+}
+
+fn implResize(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, new_len: usize, ret_addr: usize) bool {
+    _ = ctx;
+    _ = buf;
+    _ = buf_align;
+    _ = new_len;
+    _ = ret_addr;
+    return false;
+}
+
+fn implFree(ctx: *anyopaque, buf: []u8, buf_align: std.mem.Alignment, ret_addr: usize) void {
+    var self: *Heap = @ptrCast(@alignCast(ctx));
+    _ = buf_align;
+    _ = ret_addr;
+
+    self.free(buf.ptr) catch |err| {
+        log.failed("Allocator Free Error: {}", .{err});
+    };
+}
+
+fn implRemap(ctx: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, ret_addr: usize) ?[*]u8 {
+    _ = ret_addr;
+    const self: *Heap = @ptrCast(@alignCast(ctx));
+    // self.lock.acquire();
+    // defer self.lock.release();
+    const ptr = self.allocAligned(new_len, alignment.toByteUnits()) catch return null;
+    const copy_len = @min(memory.len, new_len);
+    @memcpy(ptr[0..copy_len], memory[0..copy_len]);
+    self.free(memory.ptr) catch return null;
+    return ptr;
+}
