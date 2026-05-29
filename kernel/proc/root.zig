@@ -1,9 +1,9 @@
 const kmem = @import("kmem");
 const log = @import("klog");
-const sch = @import("../sch/index.zig");
+const sched = @import("sched");
 
 pub const Process = @import("process.zig").Process;
-const Thread = @import("../sch/thread.zig").Thread;
+pub const Thread = @import("thread.zig").Thread;
 
 var kernel_process: *Process = undefined;
 var next_pid: usize = undefined;
@@ -46,20 +46,6 @@ pub fn init() void {
     log.info("Kernel process started with PID: {}", .{kernel_process.id});
 }
 
-pub fn spawn(entry_point: usize, is_user: bool, name: []const u8) !usize {
-    _ = is_user;
-    const current_thread = sch.get_current_thread();
-    const parent_proc = if (current_thread) |t| t.process.? else kernel_process;
-    const pml4_phys = try kmem.alloc_page();
-
-    const new_process = try Process.create(parent_proc, name, pml4_phys, kmem.kernel_allocator());
-    new_process.id = get_new_pid();
-
-    parent_proc.addChild(new_process);
-    _ = try start_thread(new_process, entry_point);
-    return new_process.id;
-}
-
 fn start_thread(owner: *Process, entry_point: usize) !*Thread {
     var new_thread: *Thread = try Thread.create(kmem.kernel_allocator());
     new_thread.id = get_new_tid();
@@ -69,7 +55,7 @@ fn start_thread(owner: *Process, entry_point: usize) !*Thread {
 
     new_thread.state = .Ready;
     new_thread.init(entry_point);
-    sch.push_thread(new_thread);
+    sched.push_thread(new_thread);
     return new_thread;
 }
 

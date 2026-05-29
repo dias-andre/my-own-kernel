@@ -1,7 +1,7 @@
-const Process = @import("../proc/process.zig").Process;
-const ctx = @import("context.zig");
 const std = @import("std");
 const kmem = @import("kmem");
+const arch = @import("arch");
+const Process = @import("process.zig").Process;
 
 pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
     reason: []const u8,
@@ -13,8 +13,7 @@ pub const ThreadState = union(enum) { Ready, Running, Blocked: struct {
 
 pub const Thread = struct {
     id: usize,
-    rsp: usize,
-    stack_base: usize,
+    ctx: arch.ctx.ThreadData,
 
     next: ?*Thread,
     state: ThreadState,
@@ -23,42 +22,20 @@ pub const Thread = struct {
     next_sibling: ?*Thread,
     process: ?*Process,
 
-    pub fn init(self: *Thread, entry_point: usize) void {
-        const stack_top = self.stack_base + 4096;
-        var sp = stack_top;
-
-        sp -= @sizeOf(ctx.SwitchContext);
-        const sc: *ctx.SwitchContext = @ptrFromInt(sp);
-
-        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(ctx.SwitchContext)];
-        @memset(sc_bytes, 0);
-        sc.rip = entry_point;
-        sc.rflags = 0x202;
-
-        self.rsp = sp;
-    }
-
-    pub fn init_user_mode(self: *Thread, entry_point: usize, user_stack: usize) void {
-        const stack_top = self.stack_base + 4096;
-        var sp = stack_top;
-
-        sp -= @sizeOf(ctx.InterruptFrame);
-        const frame: *ctx.InterruptFrame = @ptrFromInt(sp);
-        frame.ss = 0x23;
-        frame.rsp = user_stack;
-        frame.rflags = 0x202;
-        frame.cs = 0x1B;
-        frame.rip = entry_point;
-
-        sp -= @sizeOf(ctx.SwitchContext);
-        const sc: *ctx.SwitchContext = @ptrFromInt(sp);
-        const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(ctx.SwitchContext)];
-        @memset(sc_bytes, 0);
-
-        sc.rip = @intFromPtr(&interrupt_return_stub);
-        sc.rflags = 0x202;
-        self.rsp = sp;
-    }
+    // pub fn init(self: *Thread, entry_point: usize) void {
+    //     const stack_top = self.stack_base + 4096;
+    //     var sp = stack_top;
+    //
+    //     sp -= @sizeOf(ctx.SwitchContext);
+    //     const sc: *ctx.SwitchContext = @ptrFromInt(sp);
+    //
+    //     const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(ctx.SwitchContext)];
+    //     @memset(sc_bytes, 0);
+    //     sc.rip = entry_point;
+    //     sc.rflags = 0x202;
+    //
+    //     self.rsp = sp;
+    // }
 
     pub fn create(allocator: std.mem.Allocator) !*Thread {
         const new_thread = try allocator.create(Thread);
@@ -92,6 +69,3 @@ pub const Thread = struct {
     }
 };
 
-pub fn interrupt_return_stub() callconv(.naked) void {
-    asm volatile ("iretq");
-}

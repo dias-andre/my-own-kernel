@@ -1,8 +1,9 @@
-const manager = @import("manager.zig");
+const manager = @import("./root.zig");
 const mem = @import("kmem");
 const sch = @import("../sch/index.zig");
-const Thread = @import("../sch/thread.zig").Thread;
 const std = @import("std");
+
+const Thread = @import("thread.zig").Thread;
 
 pub const Process = struct {
     id: usize,

@@ -1,7 +1,7 @@
 const arch = @import("arch");
-const ctx = @import("context.zig");
+const ctx = arch.ctx;
 const kmem = @import("kmem");
-const Thread = @import("thread.zig").Thread;
+const Thread = @import("proc").Thread;
 
 var current_thread: ?*Thread = null;
 

@@ -55,6 +55,8 @@ pub fn build(b: *std.Build) void {
         .{ .name = "smp", .mod = b.createModule(.{ .root_source_file = b.path("kernel/smp.zig") }) },
         .{ .name = "khal", .mod = b.createModule(.{ .root_source_file = b.path("kernel/hal/root.zig") }) },
         .{ .name = "ktimer", .mod = b.createModule(.{ .root_source_file = b.path("kernel/time/timer.zig") }) },
+        .{ .name = "sched", .mod = b.createModule(.{ .root_source_file = b.path("kernel/sch/root.zig") }) },
+        .{ .name = "proc", .mod = b.createModule(.{ .root_source_file = b.path("kernel/proc/root.zig") }) },
     };
 
     for (module_list) |target_mod| {
