@@ -4,6 +4,7 @@ const mm = @import("kmem");
 const smp = @import("smp");
 const ktimer = @import("ktimer");
 const log = @import("klog");
+const proc = @import("proc");
 const BootInfo = @import("bootinfo").BootInfo;
 
 extern var _end: u8;
@@ -11,6 +12,7 @@ extern var _end: u8;
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("The execution reached kernel main", .{});
     mm.init(@intFromPtr(&_end));
+    proc.init();
 
     log.info("Enabling Interrupts...", .{});
     arch.interrupts.init();
@@ -21,8 +23,12 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.ok("System calls enabled! ", .{});
 
     arch.firmware.init(bootinfo.rsdp_addr);
+    // const currentCore = smp.get_current_core();
+    // proc.prepareCoreRunQueue(currentCore.logical_id, &currentCore.runQueue);
+    // log.debug("BSP RunQueue ready! Values: {any}", .{currentCore.runQueue});
     smp.enable();
     check_per_core_timer();
+    check_per_core_idle_process();
     log.info("Entering idle loop...", .{});
     while (true) arch.cpu.idle();
 }
@@ -34,6 +40,13 @@ fn check_per_core_timer() void {
     for (smp.get_cpus()) |core| {
         const tickCount = core.tickCount.load(.monotonic);
         log.println(" Core {d} has tick count: {d}", .{ core.logical_id, tickCount });
+    }
+}
+
+fn check_per_core_idle_process() void {
+    log.spec("Checking per-core idle processes", .{});
+    for (smp.get_cpus()) |core| {
+        log.println(" Core {d} -> {s}", .{ core.logical_id, core.runQueue.idleThread.?.process.?.name });
     }
 }
 

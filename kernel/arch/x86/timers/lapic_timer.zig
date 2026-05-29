@@ -1,3 +1,4 @@
+const sched = @import("sched");
 const std = @import("std");
 const log = @import("klog");
 const khal = @import("khal");
@@ -53,5 +54,6 @@ pub fn getLAPIC_TimerSource(tickPtr: *std.atomic.Value(u64)) khal.TimerSource {
 pub fn handle_interrupt() void {
     const current_core = ksmp.get_current_core();
     _ = current_core.tickCount.fetchAdd(1, .monotonic);
+    sched.schedule(current_core);
     apic.write_reg(.eoi, 0);
 }

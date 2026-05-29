@@ -63,8 +63,8 @@ pub fn kernel_pages() u64 {
     return kernel_page_directory;
 }
 
-pub fn get_page() ?usize {
-    return pmm.allocate_page();
+pub fn alloc_page() !usize {
+    return pmm.allocate_page() orelse return error.OutOfMemory;
 }
 
 pub fn free_page(addr: usize) void {

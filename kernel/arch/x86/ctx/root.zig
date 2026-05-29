@@ -1,3 +1,4 @@
+const Thread = @import("proc").Thread;
 // callee-saved
 // RBX, RBP, R12, R13, R14, R15 (e o RSP).
 
@@ -63,4 +64,15 @@ pub const InterruptFrame = packed struct {
     ss: u64,
 };
 
-pub fn prepare_thread() void {}
+pub fn prepareThreadContext(th: *Thread, entry_point: usize) void {
+    const stack_top = th.ctx.stack_base + 4096;
+    var sp = stack_top;
+    sp -= @sizeOf(SwitchContext);
+    const sc: *SwitchContext = @ptrFromInt(sp);
+
+    const sc_bytes = @as([*]u8, @ptrCast(sc))[0..@sizeOf(SwitchContext)];
+    @memset(sc_bytes, 0);
+    sc.rip = entry_point;
+    sc.rflags = 0x202;
+    th.ctx.rsp = sp;
+}

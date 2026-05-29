@@ -1,11 +1,18 @@
 const arch = @import("arch");
 const ctx = arch.ctx;
 const kmem = @import("kmem");
+const ksmp = @import("smp");
 const Thread = @import("proc").Thread;
 
-var current_thread: ?*Thread = null;
+// each core has its own RunQueue
+pub const RunQueue = struct {
+    idleThread: ?*Thread = null,
+    currentThread: ?*Thread = null,
+    threadCount: usize = 0,
+};
 
 pub fn push_thread(new_thread: *Thread) void {
+    var current_thread = ksmp.get_current_core().runQueue.currentThread;
     if (current_thread) |curr| {
         new_thread.next = curr.next;
         curr.next = new_thread;
@@ -15,7 +22,8 @@ pub fn push_thread(new_thread: *Thread) void {
     }
 }
 
-pub fn schedule() void {
+pub fn schedule(current_core: *ksmp.CpuCore) void {
+    var current_thread = current_core.runQueue.currentThread;
     if (current_thread) |prev| {
         if (prev.state == .Running) {
             prev.state = .Ready;
@@ -44,24 +52,26 @@ pub fn schedule() void {
                 return;
             }
 
-            const prev_proc = if (current_thread) |t| t.process else null;
-            const next_proc = next_thread.process;
-
-            if (prev_proc != next_proc) {
-                if (next_proc) |proc| {
-                    arch.paging.load_page_directory(proc.page_directory);
-                } else {
-                    arch.paging.load_page_directory(kmem.kernel_pages());
-                }
-            }
+            // const prev_proc = if (current_thread) |t| t.process else null;
+            // const next_proc = next_thread.process;
+            //
+            // if (prev_proc != next_proc) {
+            //     if (next_proc) |proc| {
+            //         arch.paging.load_page_directory(proc.page_directory);
+            //     } else {
+            //         arch.paging.load_page_directory(kmem.kernel_pages());
+            //     }
+            // }
 
             current_thread = next_thread;
             next_thread.state = .Running;
-            ctx.switch_context(&prev.rsp, next_thread.rsp);
+            arch.ctx.switch_context(&prev.ctx.rsp, next_thread.ctx.rsp);
         }
+    } else {
+        current_core.runQueue.currentThread = current_core.runQueue.idleThread.?;
     }
 }
 
 pub fn get_current_thread() ?*Thread {
-    return current_thread;
+    return ksmp.get_current_core().runQueue.currentThread;
 }

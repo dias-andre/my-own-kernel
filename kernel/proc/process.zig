@@ -1,13 +1,12 @@
 const manager = @import("./root.zig");
 const mem = @import("kmem");
-const sch = @import("../sch/index.zig");
 const std = @import("std");
 
 const Thread = @import("thread.zig").Thread;
 
 pub const Process = struct {
     id: usize,
-    name: []const u8,
+    name: [16]u8,
     ref_count: usize,
     page_directory: usize,
 
@@ -78,14 +77,15 @@ pub const Process = struct {
         return false;
     }
 
-    pub fn create(parent: ?*Process, name: []const u8, pml4_phys: usize, allocator: std.mem.Allocator) !*Process {
+    pub fn create(name: []const u8, page_dir: usize, parent: ?*Process, allocator: std.mem.Allocator) !*Process {
+        if (name.len > 16) return error.ProcessNameTooLong;
         const proc = try allocator.create(Process);
         const bytes = std.mem.asBytes(proc);
         @memset(bytes, 0);
 
         proc.parent = parent;
-        proc.name = name;
-        proc.page_directory = pml4_phys;
+        @memcpy(proc.name[0..name.len], name[0..name.len]);
+        proc.page_directory = page_dir;
         proc.ref_count = 1;
         return proc;
     }

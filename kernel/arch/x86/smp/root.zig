@@ -41,7 +41,7 @@ pub fn wake_up_ap(data: cpu.ArchCpuData) void {
     mailbox.gdt_base = @intCast(gdt_descriptor.base);
     mailbox.gdt_limit = gdt_descriptor.limit;
     mailbox.is_awake = 0;
-    const stack_allocated = kmem.get_page() orelse @panic("OOM: failed to allocate page to CPU stack.");
+    const stack_allocated = kmem.alloc_page() catch @panic("OOM: failed to allocate page to CPU stack.");
     mailbox.stack_ptr = stack_allocated + 4096;
     // log.println(" Mailbox: {any}", .{mailbox});
     // log.info("Sending wake up to core {d}", .{data.apic_id});

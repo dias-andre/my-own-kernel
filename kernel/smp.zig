@@ -2,6 +2,8 @@ const std = @import("std");
 const arch = @import("arch");
 const log = @import("klog");
 const khal = @import("khal");
+const sched = @import("sched");
+const proc = @import("proc");
 
 const TimerSource = @import("khal").TimerSource;
 
@@ -13,6 +15,7 @@ pub const CpuCore = struct {
     data: arch.cpu.ArchCpuData,
     timer: khal.TimerSource,
     tickCount: std.atomic.Value(u64),
+    runQueue: sched.RunQueue = sched.RunQueue{},
 };
 
 const MAX_CPUS = 256;
@@ -49,6 +52,7 @@ pub fn register_cpu(arch_data: arch.cpu.ArchCpuData) void {
     cpu.tickCount = std.atomic.Value(u64).init(0);
     cpu.timer = arch.smp.getCpuCoreTimerSource(&cpu.tickCount);
     cpu_count += 1;
+    proc.prepareCoreRunQueue(cpu.logical_id, &cpu.runQueue);
 }
 
 //// Returns the current core
