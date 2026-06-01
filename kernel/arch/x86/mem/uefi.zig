@@ -1,11 +1,17 @@
 const uefi = @import("std").os.uefi;
 const mmap = @import("kmem").mmap;
+const log = @import("klog");
 
 const MemoryRegion = mmap.MemoryRegion;
 const MemoryMap = mmap.MemoryMap;
 const MemoryKind = mmap.MemoryKind;
 
 pub fn get_memory_map(global_map: *MemoryMap, map: [*]uefi.tables.MemoryDescriptor, map_size: usize, desc_size: usize) usize {
+    log.info("UEFI Memory Map located at: 0x{x}", .{@intFromPtr(global_map)});
+    if (map_size == 0 or desc_size == 0) {
+        @panic("UEFI Memory Map ERROR: map_size or desc_size is 0");
+    }
+
     var offset: usize = 0;
     const base_ptr = @as([*]u8, @ptrCast(map));
     var idx: usize = 0;

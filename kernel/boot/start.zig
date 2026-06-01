@@ -131,6 +131,8 @@ fn die(msg: []const u8) noreturn {
     while (true) asm volatile ("cli; hlt");
 }
 
+var info: BootInfo = undefined;
+
 pub fn main() uefi.Status {
     const boot_services = uefi.system_table.boot_services orelse return .device_error;
     uefi_print("UEFI Bootloader!\n", .{});
@@ -182,6 +184,7 @@ pub fn main() uefi.Status {
     uefi_print("Loading memory map\n", .{});
     var map_buf_ptr = boot_services.allocatePool(.boot_services_data, 16384) catch return .aborted;
     const buf = map_buf_ptr[0..16384];
+    uefi_print("Map Buffer allocated at 0x{x}\n", .{@intFromPtr(buf)});
 
     const memory_map = boot_services.getMemoryMap(buf) catch {
         return .aborted;
@@ -192,7 +195,13 @@ pub fn main() uefi.Status {
     };
     asm volatile ("cli");
     load_page_directory(@intFromPtr(pml4_table));
-    const KernelEntryFn = *const fn (map: [*]uefi.tables.MemoryDescriptor, size: usize, d_size: usize, rsdp: u64) callconv(.{ .x86_64_sysv = .{} }) noreturn;
+    const KernelEntryFn = *const fn (info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn;
     const entry: KernelEntryFn = @ptrFromInt(kernel_entry);
-    entry(@ptrCast(memory_map.ptr), memory_map.info.len * memory_map.info.descriptor_size, memory_map.info.descriptor_size, rsdp_address);
+    info = BootInfo{
+        .map = @ptrCast(@alignCast(memory_map.ptr)),
+        .map_size = memory_map.info.len * memory_map.info.descriptor_size,
+        .desc_size = memory_map.info.descriptor_size,
+        .rsdp_addr = rsdp_address,
+    };
+    entry(&info);
 }

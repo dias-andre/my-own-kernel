@@ -9,17 +9,7 @@ const cpu = @import("cpu/cpu.zig");
 const BootInfo = @import("bootinfo").BootInfo;
 extern fn kernel_main(bootinfo: *BootInfo) noreturn;
 
-// export fn kernel_boot(pointer: u64, magic: u64) callconv(.c) noreturn {
-//     const mb_info = multiboot.init(pointer, magic);
-//     mem.init(mb_info);
-//     gdt.init();
-//     idt.init();
-//     cpu.enable_sse();
-//     kernel_main();
-//     unreachable;
-// }
-
-export fn kernel_boot(info: *BootInfo) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
+pub export fn _start(info: *BootInfo) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
     log.init();
     log.debug("Serial logger created!", .{});
     log.info("Reached kernel boot", .{});

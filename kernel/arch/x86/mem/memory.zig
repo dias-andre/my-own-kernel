@@ -5,6 +5,7 @@ const uefi_mem = @import("./uefi.zig");
 
 pub const PAGE_SIZE = 4096;
 pub const MEMORY_OFFSET = 0xFFFF800000000000;
+pub const KERNEL_VIRTUAL_OFFSET = 0xFFFFFFFF80000000;
 
 pub const MemoryRegion = arch_mmap.MemoryRegion;
 pub const MemoryMap = arch_mmap.MemoryMap;

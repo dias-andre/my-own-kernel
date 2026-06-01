@@ -7,11 +7,11 @@ const log = @import("klog");
 const proc = @import("proc");
 const BootInfo = @import("bootinfo").BootInfo;
 
-extern var _end: u8;
+extern var kernel_lma_end: u8;
 
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("The execution reached kernel main", .{});
-    mm.init(@intFromPtr(&_end));
+    mm.init(@intFromPtr(&kernel_lma_end));
     proc.init();
 
     log.info("Enabling Interrupts...", .{});
