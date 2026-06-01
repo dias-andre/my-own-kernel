@@ -1,6 +1,5 @@
 const std = @import("std");
 
-pub const KernelBuildOption = enum { Binary, Object };
 const ModuleEntry = struct { name: []const u8, mod: *std.Build.Module };
 
 fn createKernelModule(b: *std.Build, filename: []const u8) *std.Build.Module {
@@ -21,6 +20,8 @@ fn createKernelModule(b: *std.Build, filename: []const u8) *std.Build.Module {
     module.pic = false;
     module.stack_check = false;
     module.stack_protector = false;
+    module.red_zone = false;
+    module.code_model = .kernel;
     return module;
 }
 
@@ -34,7 +35,6 @@ fn createObjectToKernel(b: *std.Build, module: *std.Build.Module, object_output:
 }
 
 pub fn build(b: *std.Build) void {
-    const target_kernel_option = b.option(KernelBuildOption, "kbuild", "Select the target Kernel build") orelse .Object;
     const build_uefi = b.option(bool, "uefi", "Build UEFI bootloader?") orelse false;
 
     const kernel_module = createKernelModule(b, "kernel/main.zig");
@@ -85,26 +85,12 @@ pub fn build(b: *std.Build) void {
         });
         bootloader.root_module.addImport("bootinfo", bootinfo_module);
         b.installArtifact(bootloader);
+        return;
     }
 
     // TARGET KERNEL FILE
-    switch (target_kernel_option) {
-        .Binary => {
-            const kernel_elf = b.addExecutable(.{ .name = "kernel.elf", .root_module = kernel_module });
-            kernel_elf.setLinkerScript(b.path("linker.ld"));
-            kernel_elf.pie = false;
-            const kernel_bin = kernel_elf.addObjCopy(.{ .format = .bin });
-            const install_bin = b.addInstallFile(kernel_bin.getOutput(), "bin/kernel.bin");
-            b.getInstallStep().dependOn(&install_bin.step);
-            b.installArtifact(kernel_elf);
-        },
-        .Object => {
-            const kernel_object = b.addObject(.{
-                .name = "kernel.o",
-                .root_module = kernel_module,
-            });
-            const install_step = b.addInstallFile(kernel_object.getEmittedBin(), "bin/kernel.o");
-            b.getInstallStep().dependOn(&install_step.step);
-        },
-    }
+    const kernel_elf = b.addExecutable(.{ .name = "kernel.elf", .root_module = kernel_module });
+    kernel_elf.setLinkerScript(b.path("linker.ld"));
+    kernel_elf.pie = false;
+    b.installArtifact(kernel_elf);
 }

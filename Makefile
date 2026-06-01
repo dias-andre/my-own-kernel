@@ -10,40 +10,44 @@ UEFI_BIOS = /usr/share/edk2/x64/OVMF.4m.fd
 
 # Final Binary
 # KERNEL_ELF = $(BUILD_DIR)/kernel.elf
+UEFI_FILE = zig-out/bin/BOOTX64.efi
 KERNEL_ELF = zig-out/bin/kernel.elf
-UEFI_DISK = disk
-UEFI_FILE = $(UEFI_DISK)/EFI/BOOT/BOOTX64.EFI
-KERNEL_BIN = $(UEFI_DISK)/kernel.bin
 
+IMAGE_FILE=disk.img
 .PHONY: all run debug clean info
 
-all: $(UEFI_FILE) $(KERNEL_BIN)
+all: $(UEFI_FILE) $(KERNEL_ELF) $(IMAGE_FILE)
 
 # --- COMPILATION RULES ---
 
-$(KERNEL_BIN): $(KERNEL_DIR)/boot/bootinfo.zig $(KERNEL_SOURCES)
-	@mkdir -p $(UEFI_DISK)
-	zig build -Dkbuild=Binary
-	cp zig-out/bin/kernel.bin $(KERNEL_BIN)
-	ls -l $(KERNEL_BIN)
+$(KERNEL_ELF): $(KERNEL_DIR)/boot/bootinfo.zig $(KERNEL_SOURCES)
+	@echo "Compiling $(KERNEL_ELF)"
+	zig build
+	ls -l $(KERNEL_ELF)
 
 $(UEFI_FILE): $(UEFI_SOURCES)
-	@mkdir -p $(UEFI_DISK)/EFI/BOOT
+	@echo "Building UEFI file $(UEFI_FILE)"
 	zig build -Duefi=true
-	cp zig-out/bin/BOOTX64.efi $(UEFI_FILE)
+	ls -la $(UEFI_FILE)
 
-run: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
-	qemu-system-x86_64 -bios $(UEFI_BIOS) \
-		-drive format=raw,file=fat:rw:$(UEFI_DISK) -net none \
-		-serial stdio -display none \
-		-smp 4
+$(IMAGE_FILE): $(UEFI_FILE) $(KERNEL_ELF)
+	@echo "Creating a FAT32 image with 64MB"
+	dd if=/dev/zero of=$(IMAGE_FILE) bs=1M count=64 status=none
+	mformat -i $(IMAGE_FILE) -F ::
+	mmd -i $(IMAGE_FILE) ::/EFI
+	mmd -i $(IMAGE_FILE) ::/EFI/BOOT
+	mcopy -i $(IMAGE_FILE) $(UEFI_FILE) ::/EFI/BOOT/BOOTX64.EFI
+	mcopy -i $(IMAGE_FILE) $(KERNEL_ELF) ::/kernel.elf
 
-debug: $(UEFI_FILE) $(KERNEL_BIN) $(UEFI_BIOS) $(UEFI_DISK)
+run: $(IMAGE_FILE) $(UEFI_BIOS)
 	qemu-system-x86_64 -bios $(UEFI_BIOS) \
-		-drive format=raw,file=fat:rw:$(UEFI_DISK) -net none \
-		-serial stdio -display none \
-		-smp 4 \
-		-d int -no-reboot -no-shutdown
+		-drive format=raw,file=$(IMAGE_FILE) -net none \
+		-serial stdio -smp 4
+
+debug: $(IMAGE_FILE) $(UEFI_BIOS)
+	qemu-system-x86_64 -bios $(UEFI_BIOS) \
+		-drive format=raw,file=$(IMAGE_FILE) -net none \
+		-serial stdio -smp 4 -no-reboot -d int
 
 # Shows which files Make is seeing (Makefile Debug)
 info:
@@ -53,4 +57,4 @@ info:
 	@echo "Kernel Directory: $(KERNEL_DIR)"
 
 clean:
-	rm -rf $(UEFI_DISK) zig-out .zig-cache
+	rm -rf zig-out .zig-cache $(IMAGE_FILE)
