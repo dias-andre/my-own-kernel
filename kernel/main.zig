@@ -47,10 +47,12 @@ fn check_per_core_idle_process() void {
     }
 }
 
-pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, _: ?usize) noreturn {
+pub fn panic(msg: []const u8, _: ?*std.builtin.StackTrace, ret_addr: ?usize) noreturn {
     // @setCold(true);
     arch.cpu.disable_interrupts();
+    const rip = ret_addr orelse @returnAddress();
     log.println("PANIC: {s}", .{msg});
+    log.println(" RIP: 0x{x}", .{rip});
     while (true) arch.cpu.idle();
 }
 

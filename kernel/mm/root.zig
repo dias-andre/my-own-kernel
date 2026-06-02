@@ -8,12 +8,30 @@ const vmm = @import("vmm.zig");
 const heap = @import("heap.zig");
 pub const mmap = @import("memory_map.zig");
 
+pub const Flags = struct {
+    pub const READABLE: usize = 1 << 0;
+    pub const WRITABLE: usize = 1 << 1;
+    pub const EXECUTABLE: usize = 1 << 2;
+    pub const USER: usize = 1 << 3;
+    pub const MMIO: usize = 1 << 4;
+    pub const NO_CACHE: usize = 1 << 5;
+
+    pub const CODE_USER = READABLE | EXECUTABLE | USER;
+    pub const DATA_USER = READABLE | WRITABLE | USER;
+    pub const DATA_KERNEL = WRITABLE;
+};
+
 var kheap: heap.Heap = undefined;
 var kernel_page_directory: u32 = undefined;
 var total_ram: usize = undefined;
+var kernel_phys_base: usize = undefined;
+var kernel_size_bytes: usize = undefined;
 
 pub fn init(kernel_phys: usize, kernel_size: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
+    kernel_phys_base = kernel_phys;
+    kernel_size_bytes = kernel_size;
+    log.println(" Kernel Physical Address: 0x{x}, Kernel Size: {d} Kb ({d} bytes).", .{ kernel_phys_base, kernel_size / 1024, kernel_size });
     pmm.init(kernel_phys, kernel_size);
     log.spec("Testing PMM allocation...", .{});
 
@@ -21,6 +39,7 @@ pub fn init(kernel_phys: usize, kernel_size: usize) void {
     const p2 = pmm.allocate_page();
     if (p1) |addr| log.debug("PMM Alloc 1: {x}", .{addr}) else log.failed("PMM Alloc 1 FAILED (NULL)", .{});
     if (p2) |addr| log.debug("PMM Alloc 2: {x}", .{addr}) else log.failed("PMM Alloc 2 FAILED (NULL)", .{});
+    if ((p2.? - p1.?) != 4096) @panic("PMM Alloc is unaligned!");
 
     pmm.free_page(p1.?);
     pmm.free_page(p2.?);
@@ -71,15 +90,6 @@ pub fn free_page(addr: usize) void {
     pmm.free_page(addr);
 }
 
-pub const Flags = struct {
-    pub const READABLE: usize = 1 << 0;
-    pub const WRITABLE: usize = 1 << 1;
-    pub const EXECUTABLE: usize = 1 << 2;
-    pub const USER: usize = 1 << 3;
-    pub const MMIO: usize = 1 << 4;
-    pub const NO_CACHE: usize = 1 << 5;
-
-    pub const CODE_USER = READABLE | EXECUTABLE | USER;
-    pub const DATA_USER = READABLE | WRITABLE | USER;
-    pub const DATA_KERNEL = WRITABLE;
-};
+pub fn getKernelPhysBase() usize {
+    return kernel_phys_base;
+}

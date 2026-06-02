@@ -9,6 +9,7 @@ const idt = @import("../interrupts/idt.zig");
 const apic = @import("../interrupts/apic.zig");
 const cpu = @import("../cpu/cpu.zig");
 const gdt = @import("../cpu/gdt.zig");
+const memory = @import("../mem/memory.zig");
 
 pub const ApMailbox = packed struct {
     cr3: u32,
@@ -37,8 +38,11 @@ pub fn get_cpuid() u32 {
 
 pub fn wake_up_ap(data: cpu.ArchCpuData) void {
     const gdt_descriptor = gdt.get_gdt_descriptor();
+    const gdt_virtual = gdt_descriptor.base;
+    const gdt_offset = gdt_virtual - memory.KERNEL_VIRTUAL_OFFSET;
+    const gdt_physical = kmem.getKernelPhysBase() + gdt_offset;
     mailbox.cr3 = @intCast(kmem.kernel_pages());
-    mailbox.gdt_base = @intCast(gdt_descriptor.base);
+    mailbox.gdt_base = @intCast(gdt_physical);
     mailbox.gdt_limit = gdt_descriptor.limit;
     mailbox.is_awake = 0;
     const stack_allocated = kmem.alloc_page() catch @panic("OOM: failed to allocate page to CPU stack.");
