@@ -141,9 +141,7 @@ fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usize) 
 
 fn get_next_table(entry: *u64) !*PageTable {
     const addr = entry.*;
-    const allocator = alloc_phys_page orelse {
-        @panic("PAGING ERROR: Paging allocator not configured!");
-    };
+    const allocator = alloc_phys_page orelse return error.PageAllocatorIsNull;
 
     if ((addr & PAGE_PRESENT) == 0) {
         const new_table_phys = allocator() orelse return error.OutOfMemory;

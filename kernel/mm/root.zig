@@ -12,9 +12,9 @@ var kheap: heap.Heap = undefined;
 var kernel_page_directory: u32 = undefined;
 var total_ram: usize = undefined;
 
-pub fn init(kernel_end_addr: usize) void {
+pub fn init(kernel_phys: usize, kernel_size: usize) void {
     log.info("Starting Memory Management Subsystem.", .{});
-    pmm.init(kernel_end_addr);
+    pmm.init(kernel_phys, kernel_size);
     log.spec("Testing PMM allocation...", .{});
 
     const p1 = pmm.allocate_page();
@@ -26,7 +26,7 @@ pub fn init(kernel_end_addr: usize) void {
     pmm.free_page(p2.?);
     log.ok("Physical Page Allocator working!", .{});
     arch.paging.set_physical_allocator(&pmm.allocate_page);
-    vmm.init();
+    vmm.init(kernel_phys);
     kernel_page_directory = vmm.kernel_directory;
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});

@@ -25,9 +25,9 @@ fn init_page_directory(boot_services: *uefi.tables.BootServices) !void {
     @memset(pml4_bytes[0..4096], 0);
 }
 
-fn map_ram(boot_services: *uefi.tables.BootServices) !void {
+fn map_ram(limit: usize, boot_services: *uefi.tables.BootServices) !void {
     var current_offset: usize = 0;
-    while (current_offset < 0x20000000) : (current_offset += 4096) {
+    while (current_offset < limit) : (current_offset += 4096) {
         try paging.map_page(@ptrCast(@alignCast(pml4_table)), current_offset, current_offset, paging.PAGE_PRESENT | paging.PAGE_RW, boot_services);
     }
 }
@@ -45,7 +45,13 @@ fn map_kernel_vma(kernel_size: usize, phys_base: usize, min_vaddr: usize, boot_s
     }
 }
 
-fn load_elf(file_buffer: []align(8) const u8, boot_services: *uefi.tables.BootServices) !usize {
+const KernelMemoryData = struct {
+    kernel_vma: usize,
+    kernel_lma: usize,
+    kernel_size: usize,
+};
+
+fn load_elf(file_buffer: []align(8) const u8, boot_services: *uefi.tables.BootServices) !KernelMemoryData {
     const header: *const std.elf.Elf64_Ehdr = @ptrCast(file_buffer.ptr);
     if (!std.mem.eql(u8, header.e_ident[0..4], "\x7fELF")) {
         return error.InvalidMagic;
@@ -90,9 +96,13 @@ fn load_elf(file_buffer: []align(8) const u8, boot_services: *uefi.tables.BootSe
             }
         }
     }
-
+    uefi_print("Kernel physical address: 0x{x}\n", .{kernel_phys_base});
     try map_kernel_vma(total_kernel_size, kernel_phys_base, min_vaddr, boot_services);
-    return header.e_entry;
+    return .{
+        .kernel_lma = kernel_phys_base,
+        .kernel_vma = header.e_entry,
+        .kernel_size = total_kernel_size,
+    };
 }
 
 fn load_page_directory(addr: usize) void {
@@ -139,11 +149,8 @@ pub fn main() uefi.Status {
     uefi_print("Creating page directory!\n", .{});
     init_page_directory(boot_services) catch die("Failed to initialize page directory");
     uefi_print("Page directory located at 0x{x}\n", .{@intFromPtr(pml4_table)});
-    uefi_print("Start mapping 512Mb...\n", .{});
-    map_ram(boot_services) catch die("Failed to MAP 512MB RAM");
-    uefi_print("512MB RAM mapped!\n", .{});
 
-    const pages = boot_services.allocatePages(.{ .address = @ptrFromInt(KERNEL_PHYSICAL) }, .loader_code, 512) catch return .device_error;
+    const pages = boot_services.allocatePages(.any, .loader_code, 512) catch return .device_error;
 
     const fs = boot_services.locateProtocol(uefi.protocol.SimpleFileSystem, null) catch return .device_error;
     var root = fs.?.openVolume() catch return .device_error;
@@ -155,8 +162,8 @@ pub fn main() uefi.Status {
     kernel_file.close() catch return .device_error;
     root.close() catch return .device_error;
     uefi_print("Loading kernel elf...\n", .{});
-    const kernel_entry = load_elf(buffer, boot_services) catch return .aborted;
-    uefi_print("Kernel entry found at: 0x{x}\n", .{kernel_entry});
+    const kernel_memory_data = load_elf(buffer, boot_services) catch return .aborted;
+    uefi_print("Kernel entry found at: 0x{x}\n", .{kernel_memory_data.kernel_vma});
     // Searching RSDP
     var rsdp_address: u64 = 0;
     const acpi_20_guid = uefi.Guid{
@@ -177,10 +184,14 @@ pub fn main() uefi.Status {
             break;
         }
     }
-
     if (rsdp_address == 0) {
         uefi_print("ALERT: ACPI 2.0 Table not found! (rsdp_address = 0)\n", .{});
     }
+
+    uefi_print("Start identity mapping of {d} bytes...\n", .{kernel_memory_data.kernel_lma + kernel_memory_data.kernel_size});
+    map_ram(kernel_memory_data.kernel_lma + kernel_memory_data.kernel_lma, boot_services) catch die("Failed to map RAM");
+    uefi_print("Map completed!\n", .{});
+
     uefi_print("Loading memory map\n", .{});
     var map_buf_ptr = boot_services.allocatePool(.boot_services_data, 16384) catch return .aborted;
     const buf = map_buf_ptr[0..16384];
@@ -195,13 +206,16 @@ pub fn main() uefi.Status {
     };
     asm volatile ("cli");
     load_page_directory(@intFromPtr(pml4_table));
+    asm volatile ("sti");
     const KernelEntryFn = *const fn (info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn;
-    const entry: KernelEntryFn = @ptrFromInt(kernel_entry);
+    const entry: KernelEntryFn = @ptrFromInt(kernel_memory_data.kernel_vma);
     info = BootInfo{
         .map = @ptrCast(@alignCast(memory_map.ptr)),
         .map_size = memory_map.info.len * memory_map.info.descriptor_size,
         .desc_size = memory_map.info.descriptor_size,
         .rsdp_addr = rsdp_address,
+        .kernel_phys = kernel_memory_data.kernel_lma,
+        .kernel_size = kernel_memory_data.kernel_size,
     };
     entry(&info);
 }

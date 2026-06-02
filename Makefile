@@ -42,7 +42,7 @@ $(IMAGE_FILE): $(UEFI_FILE) $(KERNEL_ELF)
 run: $(IMAGE_FILE) $(UEFI_BIOS)
 	qemu-system-x86_64 -bios $(UEFI_BIOS) \
 		-drive format=raw,file=$(IMAGE_FILE) -net none \
-		-serial stdio -smp 4
+		-serial stdio -smp 4 -m 1G
 
 debug: $(IMAGE_FILE) $(UEFI_BIOS)
 	qemu-system-x86_64 -bios $(UEFI_BIOS) \

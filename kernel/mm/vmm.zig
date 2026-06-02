@@ -7,7 +7,10 @@ const mmap = @import("./memory_map.zig");
 pub var is_paging_enabled: bool = false;
 pub var kernel_directory: u32 = undefined;
 
-pub fn init() void {
+extern var kernel_vma_start: u8;
+extern var kernel_vma_end: u8;
+
+pub fn init(kernel_phys: usize) void {
     log.info("(VMM) Initializing Virtual Memory Management", .{});
     const memory_map = arch.memory.memory_map();
     const phys_page_dir = pmm.allocate_page() orelse {
@@ -39,12 +42,36 @@ pub fn init() void {
 
         idx += 1;
     }
+
     log.debug("Regions mapped {d}", .{idx});
-    kernel_directory = @intCast(phys_page_dir);
+    log.info("Mapping Kernel Virtual Memory...", .{});
+    mapKernelVma(kernel_phys, phys_page_dir, flags) catch @panic("Failed to map Kernel Virtual Memory!");
+    log.ok("Kernel Virtual Memory mapped!", .{});
     log.debug("Loading page directory...", .{});
+    kernel_directory = @intCast(phys_page_dir);
     arch.paging.load_page_directory(kernel_directory);
     arch.paging.set_paging_enabled();
     log.ok("(VMM) Virtual Memory Manager initialized successfully!", .{});
+}
+
+fn mapKernelVma(kernel_phys: usize, page_dir: usize, flags: usize) !void {
+    const v_start = @intFromPtr(&kernel_vma_start);
+    const v_end = @intFromPtr(&kernel_vma_end);
+    const p_start = kernel_phys;
+    // const kernel_size = v_end - v_start;
+    // const p_end = p_start + kernel_size;
+    // log.println(" VMA Start: 0x{x}, VMA End: 0x{x}", .{ v_start, v_end });
+    // log.println(" LMA Start: 0x{x}, LMA End: 0x{x}", .{ p_start, p_end });
+    // log.println(" Kernel Size: {d} bytes", .{kernel_size});
+
+    var vaddr = v_start;
+    var paddr = p_start;
+    while (vaddr < v_end) : ({
+        vaddr += arch.memory.PAGE_SIZE;
+        paddr += arch.memory.PAGE_SIZE;
+    }) {
+        try arch.paging.map(page_dir, vaddr, paddr, flags);
+    }
 }
 
 fn map_range(root: usize, virt_start: usize, phys_start: usize, size: usize, flags: u32) !void {

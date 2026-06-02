@@ -7,11 +7,9 @@ const log = @import("klog");
 const proc = @import("proc");
 const BootInfo = @import("bootinfo").BootInfo;
 
-extern var kernel_lma_end: u8;
-
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("The execution reached kernel main", .{});
-    mm.init(@intFromPtr(&kernel_lma_end));
+    mm.init(bootinfo.kernel_phys, bootinfo.kernel_size);
     proc.init();
 
     log.info("Enabling Interrupts...", .{});
@@ -21,7 +19,6 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
-
     arch.firmware.init(bootinfo.rsdp_addr);
     // const currentCore = smp.get_current_core();
     // proc.prepareCoreRunQueue(currentCore.logical_id, &currentCore.runQueue);

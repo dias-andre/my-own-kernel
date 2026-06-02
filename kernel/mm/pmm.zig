@@ -29,8 +29,9 @@ fn align_up(addr: usize) usize {
     return (addr + arch.memory.PAGE_SIZE) - (addr % arch.memory.PAGE_SIZE);
 }
 
-pub fn init(kernel_end: usize) void {
+pub fn init(kernel_start: usize, kernel_size: usize) void {
     log.info("(PMM) Initializing physical memory manager...", .{});
+    const kernel_end = kernel_start + kernel_size;
     const memory_map = arch.memory.memory_map();
     total_pages = arch.memory.max_ram() / arch.memory.PAGE_SIZE;
 
@@ -54,8 +55,9 @@ pub fn init(kernel_end: usize) void {
     }
 
     const final_reserved_addr = bitmap_phys_addr + bitmap_size;
-    deinit_region(0, final_reserved_addr);
-
+    deinit_region(kernel_start, final_reserved_addr); // maps kernel memory
+    // The dangerous region of memory must be protected
+    deinit_region(0, 0x100000); // maps first 1MB
     log.ok("(PMM) Done! ", .{});
 }
 
