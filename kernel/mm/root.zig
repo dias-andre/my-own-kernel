@@ -44,7 +44,6 @@ pub fn init(kernel_phys: usize, kernel_size: usize) void {
     pmm.free_page(p1.?);
     pmm.free_page(p2.?);
     log.ok("Physical Page Allocator working!", .{});
-    arch.paging.set_physical_allocator(&pmm.allocate_page);
     vmm.init(kernel_phys);
     kernel_page_directory = vmm.kernel_directory;
     init_kernel_heap();

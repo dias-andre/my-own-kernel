@@ -9,7 +9,7 @@ const cpu = @import("cpu/cpu.zig");
 const BootInfo = @import("bootinfo").BootInfo;
 extern fn kernel_main(bootinfo: *BootInfo) noreturn;
 
-pub export fn _start(info: *BootInfo) linksection(".text.kernel_boot") callconv(.{ .x86_64_sysv = .{} }) noreturn {
+export fn kernel_entry(info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn {
     log.init();
     log.debug("Serial logger created!", .{});
     log.info("Reached kernel boot", .{});

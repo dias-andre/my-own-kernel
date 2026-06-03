@@ -10,6 +10,8 @@ pub var kernel_directory: u32 = undefined;
 extern var kernel_vma_start: u8;
 extern var kernel_vma_end: u8;
 
+export var kernel_stack: [16384]u8 align(16) = undefined;
+
 pub fn init(kernel_phys: usize) void {
     log.info("(VMM) Initializing Virtual Memory Management", .{});
     const memory_map = arch.memory.memory_map();
@@ -32,9 +34,9 @@ pub fn init(kernel_phys: usize) void {
         var current_addr: usize = region.base;
         while (current_addr < (region.base + region.len)) : (current_addr += arch.memory.PAGE_SIZE) {
             // Identity Mapping
-            arch.paging.map(phys_page_dir, current_addr, current_addr, flags) catch
-                @panic("Failed to map page for Identity Mapping!");
-
+            // arch.paging.map(phys_page_dir, current_addr, current_addr, flags) catch
+            //     @panic("Failed to map page for Identity Mapping!");
+            //
             const virt_offset = current_addr + arch.memory.MEMORY_OFFSET;
             arch.paging.map(phys_page_dir, virt_offset, current_addr, flags) catch
                 @panic("Failed to map page for higher half mapping!");
