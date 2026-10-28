@@ -31,7 +31,7 @@ pub fn init() void {
     next_pid = 0;
     next_pid = 0;
 
-    kernel_process = Process.create("kernel", kmem.kernel_pages(), null, kmem.kernel_allocator()) catch |err| {
+    kernel_process = Process.create("kernel", kmem.get_virtual_page_dir(), null, kmem.kernel_allocator()) catch |err| {
         log.failed("Failed to create kernel process. Error: {any}", .{err});
         while (true) arch.cpu.idle();
     };

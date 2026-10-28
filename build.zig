@@ -84,7 +84,14 @@ pub fn build(b: *std.Build) void {
                 .optimize = b.standardOptimizeOption(.{}),
             }),
         });
+        bootloader.root_module.optimize = .Debug;
+        bootloader.root_module.strip = true;
         bootloader.root_module.addImport("bootinfo", bootinfo_module);
+        const install_elf = b.addInstallArtifact(bootloader, .{
+            .dest_dir = .{ .override = .{ .custom = "." } },
+            .dest_sub_path = "BOOTX64.elf",
+        });
+        b.getInstallStep().dependOn(&install_elf.step);
         b.installArtifact(bootloader);
         return;
     }

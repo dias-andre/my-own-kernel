@@ -64,7 +64,8 @@ export fn isr_handler_zig(ctx: *isr_table.TrapFrame) void {
         },
         else => {
             var panicWriter = getPanicWriter();
-            panicWriter.print("Interrupt: {d}\n", .{ctx.int_num}) catch @panic("IDT PanicWriter failed!");
+            panicWriter.print("\nInterrupt: {d}\n", .{ctx.int_num}) catch @panic("IDT PanicWriter failed!");
+            panicWriter.print(" RIP: 0x{x}, ERROR_CODE: {d}\n", .{ ctx.rip, ctx.error_code }) catch @panic("IDT PanicWriter failed!");
             @panic("Unhandled interrupt!\n");
         },
     }

@@ -40,8 +40,8 @@ pub fn wake_up_ap(data: cpu.ArchCpuData) void {
     const gdt_descriptor = gdt.get_gdt_descriptor();
     const gdt_virtual = gdt_descriptor.base;
     const gdt_offset = gdt_virtual - memory.KERNEL_VIRTUAL_OFFSET;
-    const gdt_physical = kmem.getKernelPhysBase() + gdt_offset;
-    mailbox.cr3 = @intCast(kmem.kernel_pages());
+    const gdt_physical = kmem.get_kernel_phys_base() + gdt_offset;
+    mailbox.cr3 = @intCast(kmem.get_local_page_dir());
     mailbox.gdt_base = @intCast(gdt_physical);
     mailbox.gdt_limit = gdt_descriptor.limit;
     mailbox.is_awake = 0;

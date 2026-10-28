@@ -22,7 +22,7 @@ export fn kernel_entry(info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noretu
     log.info("IDT Initialized!", .{});
     cpu.enable_sse();
     log.info("SSE enabled!", .{});
-    log.debug("Jump to kernel main!", .{});
+    log.debug("Jump to kernel main!\n", .{});
     // while (true) {
     //     serial.print("halt loop\n");
     //     asm volatile ("hlt");

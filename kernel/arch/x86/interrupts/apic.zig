@@ -66,7 +66,7 @@ pub fn parse_madt(madt_ptr: u64) void {
     }
     log.info("Local APIC Address found at: 0x{x}", .{madt.local_apic_address});
     local_apic_address = madt.local_apic_address;
-    paging.map(kmem.kernel_pages(), local_apic_address, local_apic_address, kmem.Flags.WRITABLE | kmem.Flags.NO_CACHE) catch {
+    paging.map(kmem.get_virtual_page_dir(), local_apic_address, local_apic_address, kmem.Flags.WRITABLE | kmem.Flags.NO_CACHE) catch {
         log.failed("Failed to map Local APIC Address to kernel directory!", .{});
         @panic("Failed to map Local APIC to virtual memory");
     };

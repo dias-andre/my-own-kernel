@@ -1,3 +1,5 @@
+const memory = @import("../mem/memory.zig");
+const kmem = @import("kmem");
 const std = @import("std");
 const log = @import("klog");
 
@@ -45,7 +47,8 @@ fn verify_sdt_checksum(header: *SDT_Header) bool {
 
 var madt: u64 = 0;
 pub fn init(ptr: u64) void {
-    const rsdp: *RSDP_Descriptor = @ptrFromInt(ptr);
+    log.debug("Physical RSDP ptr: 0x{x}", .{ptr});
+    const rsdp: *RSDP_Descriptor = @ptrFromInt(ptr + memory.MEMORY_OFFSET);
     if (!std.mem.eql(u8, &rsdp.signature, "RSD PTR ")) {
         @panic("RSDP signature is invalid!");
     }
@@ -56,11 +59,11 @@ pub fn init(ptr: u64) void {
     var expected_sig: []const u8 = undefined;
 
     if (rsdp.revision >= 2) {
-        sdt_header = @ptrFromInt(rsdp.xsdt_address);
+        sdt_header = @ptrFromInt(@as(usize, @intCast(rsdp.xsdt_address)) + memory.MEMORY_OFFSET);
         expected_sig = "XSDT";
         log.info("Using XSDT", .{});
     } else {
-        sdt_header = @ptrFromInt(rsdp.rsdt_address);
+        sdt_header = @ptrFromInt(@as(usize, @intCast(rsdp.rsdt_address)) + memory.MEMORY_OFFSET);
         expected_sig = "RSDT";
         log.info("Using RSDT", .{});
     }
@@ -90,10 +93,11 @@ fn find_madt_with_xsdt(ptr: u64) ?u64 {
     const pointers = @as([*]align(1) const u64, @ptrFromInt(pointers_array_addr));
 
     for (0..entries) |i| {
-        const entry = @as(*SDT_Header, @ptrFromInt(pointers[i]));
+        const entry_virt_addr = pointers[i] + memory.MEMORY_OFFSET;
+        const entry = @as(*SDT_Header, @ptrFromInt(entry_virt_addr));
         if (std.mem.eql(u8, &entry.signature, "APIC")) {
             log.ok("MADT (APIC) found at: 0x{x}", .{@intFromPtr(entry)});
-            return pointers[i];
+            return entry_virt_addr;
         } else {
             log.debug("Ignored table: {s}", .{@as([]const u8, entry.signature[0..4])});
         }

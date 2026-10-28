@@ -27,17 +27,16 @@ pub const Heap = struct {
     end_addr: usize,
     lock: Spinlock,
 
-    pub fn init(start: usize, initial_size: usize, page_dir: u64, vmmFlags: usize) !Heap {
+    pub fn init(start: usize, initial_size: usize, page_dir: u64, pagingFlags: usize) !Heap {
         var current_virt = start;
         const end_virt = start + initial_size;
-
-        log.debug("Heap.init called with: start={} , size={}", .{ start, initial_size });
+        if (initial_size % arch.memory.PAGE_SIZE != 0) return error.SizeNotAligned;
         while (current_virt < end_virt) : (current_virt += arch.memory.PAGE_SIZE) {
             const phys = pmm.allocate_page() orelse return error.OutOfMemory;
             if ((phys % arch.memory.PAGE_SIZE) != 0) {
-                @panic("HEAP PANIC: Physical address not aligned!");
+                @panic("HEAP PANIC: Physical page address not aligned!");
             }
-            try arch.paging.map(page_dir, current_virt, phys, vmmFlags);
+            try arch.paging.map(page_dir, current_virt, phys, pagingFlags);
         }
 
         const first_block: *BlockHeader = @ptrFromInt(start);
