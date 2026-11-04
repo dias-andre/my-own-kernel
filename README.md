@@ -2,9 +2,11 @@
 
 ![Zig](https://img.shields.io/badge/Made%20with-Zig-orange?style=for-the-badge&logo=zig)
 
-A hobby x86_64 kernel written from scratch in Zig. This is a personal, educational project — I'm building it to learn low-level systems programming, memory management, hardware interfacing, and operating system design using modern tooling.
+> **Project archived:** I'm taking a break from this project to focus on studying other topics for my career. Thanks for stopping by and taking an interest in it!
 
-Initially conceived in C, the project **migrated to Zig** to leverage modern language features in OS development.
+My Own Kernel is a personal learning project: an x86_64 operating system kernel written in Zig. It began as a way to explore how computers start up and how an operating system communicates with the hardware beneath it.
+
+The project started in C and later moved to Zig. In simple terms, a small UEFI program starts the machine and loads the kernel. The kernel then sets up the basic environment it needs to run, including memory and processor support. QEMU can emulate a computer so the project can be built and tried without dedicated hardware.
 
 ---
 
@@ -13,28 +15,6 @@ Initially conceived in C, the project **migrated to Zig** to leverage modern lan
 > *Current state of the kernel running in QEMU, booting via UEFI with the serial output, printed in stdio*
 
 ![Kernel Screenshot](./docs/screenshot.png)
-
----
-
-## Project Status
-
-The kernel boots **natively via UEFI**. The `make run` target is the primary way to run it.
-
-### Implemented
-- [x] **UEFI Bootloader:** Hand-written Zig UEFI app loads `kernel.bin` and passes a `BootInfo` struct.
-- [x] **Physical Memory Manager:** 4KB page bitmap allocator with kernel/bitmap memory protection.
-- [x] **Virtual Memory Manager:** Higher-half 4-level paging (offset `0xFFFF800000000000`).
-- [x] **Heap Allocator:** Implementation of `std.mem.Allocator` with a Linked-List.
-- [x] **GDT:** Kernel code/data, user code/data, TSS.
-- [x] **IDT:** Full 256-entry table generated at compile time from assembly stubs.
-- [x] **PIC (legacy):** IRQ remapping (master 0x20, slave 0xA0).
-- [x] **PIT Timer:** Programmable Interval Timer at 1000 Hz.
-- [x] **Syscall Infrastructure:** `swapgs`/`sysretq` entry, handlers for `exit`, `yield`, `sleep`.
-- [x] **Hardware Abstraction Layer (HAL):** ACPI (RSDP/XSDT/MADT) parsing and initial APIC topology discovery.
-- [x] **Symmetric Multiprocessing (SMP):** Send wake-up signals for each core.
-### In Progress
-- [ ] **APIC:** Replacing the legacy PIC with the local APIC and I/O APIC for interrupt management.
-- [ ] **Multicore Scheduler:** Evolving the task scheduler to handle thread dispatching and context switching across multiple APs (Application Processors) now that SMP is initialized.
 
 ---
 
