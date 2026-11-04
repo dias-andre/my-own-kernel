@@ -42,7 +42,6 @@ pub fn build(b: *std.Build) void {
         .root_source_file = b.path("kernel/boot/bootinfo.zig"),
     });
     kernel_module.addAssemblyFile(b.path("kernel/arch/x86/smp/trampoline.s"));
-    kernel_module.addAssemblyFile(b.path("kernel/arch/x86/boot.s"));
     kernel_module.addImport("bootinfo", bootinfo_module);
 
     const libc_object = createObjectToKernel(b, createKernelModule(b, "kernel/utils/libc_stubs.zig"), "libc.o");
@@ -84,14 +83,7 @@ pub fn build(b: *std.Build) void {
                 .optimize = b.standardOptimizeOption(.{}),
             }),
         });
-        bootloader.root_module.optimize = .Debug;
-        bootloader.root_module.strip = true;
         bootloader.root_module.addImport("bootinfo", bootinfo_module);
-        const install_elf = b.addInstallArtifact(bootloader, .{
-            .dest_dir = .{ .override = .{ .custom = "." } },
-            .dest_sub_path = "BOOTX64.elf",
-        });
-        b.getInstallStep().dependOn(&install_elf.step);
         b.installArtifact(bootloader);
         return;
     }

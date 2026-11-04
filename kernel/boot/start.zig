@@ -3,8 +3,8 @@ const paging = @import("./bootstrap_paging.zig");
 const uefi = std.os.uefi;
 const BootInfo = @import("bootinfo").BootInfo;
 
-const MAX_KERNEL_ALLOCATION: usize = 0x4000000;
-const KernelEntryFn = *const fn (info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn;
+const KERNEL_PHYSICAL: usize = 0x100000;
+const KERNEL_VIRTUAL: usize = 0xFFFFFFFF80000000;
 
 fn serial_print(str: []const u8) void {
     for (str) |char| {
@@ -19,23 +19,20 @@ fn serial_print(str: []const u8) void {
 var pml4_table: [*]u64 = undefined;
 
 fn init_page_directory(boot_services: *uefi.tables.BootServices) !void {
-    const pml4_ptr = try boot_services.allocatePages(.{ .max_address = @ptrFromInt(paging.MAX_ALLOCATION_ADDR) }, .loader_data, 1);
+    const pml4_ptr = try boot_services.allocatePages(.any, .loader_data, 1);
     pml4_table = @ptrCast(@alignCast(pml4_ptr));
     const pml4_bytes: [*]u8 = @ptrCast(pml4_ptr);
     @memset(pml4_bytes[0..4096], 0);
 }
 
-fn map_ram(limit: usize) !void {
-    uefi_print("Start identity mapping...\n", .{});
-    uefi_print("Map limit: 0x{x}\n", .{limit});
+fn map_ram(limit: usize, boot_services: *uefi.tables.BootServices) !void {
     var current_offset: usize = 0;
     while (current_offset < limit) : (current_offset += 4096) {
-        try paging.map_page(@ptrCast(@alignCast(pml4_table)), current_offset, current_offset, paging.PAGE_PRESENT | paging.PAGE_RW);
+        try paging.map_page(@ptrCast(@alignCast(pml4_table)), current_offset, current_offset, paging.PAGE_PRESENT | paging.PAGE_RW, boot_services);
     }
-    uefi_print("Map complete!\n", .{});
 }
 
-fn map_kernel_vma(kernel_size: usize, phys_base: usize, min_vaddr: usize) !void {
+fn map_kernel_vma(kernel_size: usize, phys_base: usize, min_vaddr: usize, boot_services: *uefi.tables.BootServices) !void {
     const flags = paging.PAGE_PRESENT | paging.PAGE_RW;
     var virt_addr: usize = min_vaddr;
     var phys_addr: usize = phys_base;
@@ -44,7 +41,7 @@ fn map_kernel_vma(kernel_size: usize, phys_base: usize, min_vaddr: usize) !void 
         virt_addr += 4096;
         phys_addr += 4096;
     }) {
-        try paging.map_page(@ptrCast(@alignCast(pml4_table)), virt_addr, phys_addr, flags);
+        try paging.map_page(@ptrCast(@alignCast(pml4_table)), virt_addr, phys_addr, flags, boot_services);
     }
 }
 
@@ -79,8 +76,8 @@ fn load_elf(file_buffer: []align(8) const u8, boot_services: *uefi.tables.BootSe
     const total_kernel_size = max_vaddr - min_vaddr;
 
     const total_pages = (total_kernel_size + 4095) / 4096;
-    const final_kernel_phys_ptr = try boot_services.allocatePages(.{ .max_address = @ptrFromInt(MAX_KERNEL_ALLOCATION) }, .loader_code, total_pages);
-    const kernel_phys_base: usize = @intFromPtr(final_kernel_phys_ptr.ptr);
+    const final_kernel_phys_ptr = try boot_services.allocatePages(.any, .loader_code, total_pages);
+    const kernel_phys_base = @intFromPtr(@as(*u64, @ptrCast(@alignCast(final_kernel_phys_ptr))));
 
     for (0..header.e_phnum) |i| {
         const ph = ph_table[i];
@@ -100,11 +97,11 @@ fn load_elf(file_buffer: []align(8) const u8, boot_services: *uefi.tables.BootSe
         }
     }
     uefi_print("Kernel physical address: 0x{x}\n", .{kernel_phys_base});
-    try map_kernel_vma(total_kernel_size, kernel_phys_base, min_vaddr);
+    try map_kernel_vma(total_kernel_size, kernel_phys_base, min_vaddr, boot_services);
     return .{
         .kernel_lma = kernel_phys_base,
         .kernel_vma = header.e_entry,
-        .kernel_size = total_pages * 4096,
+        .kernel_size = total_kernel_size,
     };
 }
 
@@ -144,14 +141,14 @@ fn die(msg: []const u8) noreturn {
     while (true) asm volatile ("cli; hlt");
 }
 
+var info: BootInfo = undefined;
+
 pub fn main() uefi.Status {
     const boot_services = uefi.system_table.boot_services orelse return .device_error;
     uefi_print("UEFI Bootloader!\n", .{});
-    uefi_print("Bootloader base hint: 0x{x}\n", .{@intFromPtr(&main)});
     uefi_print("Creating page directory!\n", .{});
     init_page_directory(boot_services) catch die("Failed to initialize page directory");
     uefi_print("Page directory located at 0x{x}\n", .{@intFromPtr(pml4_table)});
-    paging.init(boot_services);
 
     const pages = boot_services.allocatePages(.any, .loader_code, 512) catch return .device_error;
 
@@ -166,7 +163,7 @@ pub fn main() uefi.Status {
     root.close() catch return .device_error;
     uefi_print("Loading kernel elf...\n", .{});
     const kernel_memory_data = load_elf(buffer, boot_services) catch return .aborted;
-    uefi_print("Kernel Physical Base: 0x{x}, Kernel Size: {d} bytes, Kernel Virtual Address: 0x{x}\n", .{ kernel_memory_data.kernel_lma, kernel_memory_data.kernel_size, kernel_memory_data.kernel_vma });
+    uefi_print("Kernel entry found at: 0x{x}\n", .{kernel_memory_data.kernel_vma});
     // Searching RSDP
     var rsdp_address: u64 = 0;
     const acpi_20_guid = uefi.Guid{
@@ -191,23 +188,16 @@ pub fn main() uefi.Status {
         uefi_print("ALERT: ACPI 2.0 Table not found! (rsdp_address = 0)\n", .{});
     }
 
+    uefi_print("Start identity mapping of {d} bytes...\n", .{kernel_memory_data.kernel_lma + kernel_memory_data.kernel_size});
+    map_ram(kernel_memory_data.kernel_lma + kernel_memory_data.kernel_lma, boot_services) catch die("Failed to map RAM");
+    uefi_print("Map completed!\n", .{});
+
     uefi_print("Loading memory map\n", .{});
     var map_buf_ptr = boot_services.allocatePool(.boot_services_data, 16384) catch return .aborted;
     const buf = map_buf_ptr[0..16384];
     uefi_print("Map Buffer allocated at 0x{x}\n", .{@intFromPtr(buf)});
 
-    const pml4_addr = @intFromPtr(pml4_table);
-    const buf_end = @intFromPtr(buf) + 16384;
-    const kernel_end = kernel_memory_data.kernel_lma + kernel_memory_data.kernel_size;
-    const temp_stack = boot_services.allocatePages(.{ .max_address = @ptrFromInt(paging.MAX_ALLOCATION_ADDR) }, .loader_data, 4) catch die("Failed to alloc temp stack!");
-    const temp_stack_top = @intFromPtr(temp_stack.ptr) + (4 * 4096);
-    const bootInfoAlloc = boot_services.allocatePool(.loader_data, @as(usize, @sizeOf(BootInfo))) catch @panic("Failed to alloc BootInfo Pool");
-
-    const map_limit = @max(@max(pml4_addr, buf_end), @max(kernel_end, @intFromPtr(temp_stack.ptr))) + 0x1000;
-    map_ram(map_limit) catch die("Failed to map RAM");
-
     const memory_map = boot_services.getMemoryMap(buf) catch {
-        die("Failed to get UEFI Memory Map!\n");
         return .aborted;
     };
 
@@ -215,18 +205,11 @@ pub fn main() uefi.Status {
         return .aborted;
     };
     asm volatile ("cli");
-    asm volatile (
-        \\mov %[stack], %%rsp
-        \\mov %[stack], %%rbp
-        :
-        : [stack] "r" (temp_stack_top),
-    );
     load_page_directory(@intFromPtr(pml4_table));
     asm volatile ("sti");
-
+    const KernelEntryFn = *const fn (info: *BootInfo) callconv(.{ .x86_64_sysv = .{} }) noreturn;
     const entry: KernelEntryFn = @ptrFromInt(kernel_memory_data.kernel_vma);
-    const info: *BootInfo = @ptrCast(@alignCast(bootInfoAlloc.ptr));
-    info.* = BootInfo{
+    info = BootInfo{
         .map = @ptrCast(@alignCast(memory_map.ptr)),
         .map_size = memory_map.info.len * memory_map.info.descriptor_size,
         .desc_size = memory_map.info.descriptor_size,
@@ -234,6 +217,5 @@ pub fn main() uefi.Status {
         .kernel_phys = kernel_memory_data.kernel_lma,
         .kernel_size = kernel_memory_data.kernel_size,
     };
-    serial_print("Jump\n");
-    entry(info);
+    entry(&info);
 }

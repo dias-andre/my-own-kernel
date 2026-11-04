@@ -22,6 +22,7 @@ pub const Flags = struct {
 };
 
 var kheap: heap.Heap = undefined;
+var kernel_page_directory: u32 = undefined;
 var total_ram: usize = undefined;
 var kernel_phys_base: usize = undefined;
 var kernel_size_bytes: usize = undefined;
@@ -43,8 +44,9 @@ pub fn init(kernel_phys: usize, kernel_size: usize) void {
     pmm.free_page(p1.?);
     pmm.free_page(p2.?);
     log.ok("Physical Page Allocator working!", .{});
+    arch.paging.set_physical_allocator(&pmm.allocate_page);
     vmm.init(kernel_phys);
-    pmm.apply_bitmap_virtual_offset();
+    kernel_page_directory = vmm.kernel_directory;
     init_kernel_heap();
     log.ok("Memory Management Subsystem started successfully!", .{});
 }
@@ -54,11 +56,11 @@ fn init_kernel_heap() void {
     const HEAP_START: usize = 0x02000000;
     const HEAP_INITIAL_SIZE: usize = 4096;
     log.debug("Before init: start=0x{x}, size={d}", .{ HEAP_START, HEAP_INITIAL_SIZE });
-    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, vmm.get_virtual_kernel_dir(), Flags.DATA_KERNEL) catch {
+    kheap = heap.Heap.init(HEAP_START, HEAP_INITIAL_SIZE, kernel_page_directory, Flags.DATA_KERNEL) catch {
         log.failed("Failed to initialize Kernel Heap", .{});
         while (true) arch.cpu.idle();
     };
-    log.ok("Kernel heap map completed!", .{});
+    log.ok("Kernel heap mapped successfully!", .{});
     log.spec("Testing kernel heap!", .{});
     const addr = kheap.allocator().rawAlloc(4, std.mem.Alignment.@"16", 0) orelse {
         @panic("Failed to alloc 4 bytes on heap");
@@ -76,10 +78,9 @@ pub fn kernel_allocator() std.mem.Allocator {
     return kheap.allocator();
 }
 
-pub const get_virtual_page_dir = vmm.get_virtual_kernel_dir;
-pub const get_local_page_dir = vmm.get_phys_kernel_dir;
-
-// pub fn get_virtual_page_dir = vmm.get_virtual_kernel_dir;
+pub fn kernel_pages() u64 {
+    return kernel_page_directory;
+}
 
 pub fn alloc_page() !usize {
     return pmm.allocate_page() orelse return error.OutOfMemory;
@@ -89,6 +90,6 @@ pub fn free_page(addr: usize) void {
     pmm.free_page(addr);
 }
 
-pub fn get_kernel_phys_base() usize {
+pub fn getKernelPhysBase() usize {
     return kernel_phys_base;
 }

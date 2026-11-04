@@ -7,12 +7,9 @@ const log = @import("klog");
 const proc = @import("proc");
 const BootInfo = @import("bootinfo").BootInfo;
 
-var global_bootinfo: BootInfo = undefined;
-
 export fn kernel_main(bootinfo: *BootInfo) noreturn {
-    global_bootinfo = bootinfo.*;
     log.info("The execution reached kernel main", .{});
-    mm.init(global_bootinfo.kernel_phys, global_bootinfo.kernel_size);
+    mm.init(bootinfo.kernel_phys, bootinfo.kernel_size);
     proc.init();
 
     log.info("Enabling Interrupts...", .{});
@@ -22,7 +19,7 @@ export fn kernel_main(bootinfo: *BootInfo) noreturn {
     log.info("Enabling System calls...", .{});
     arch.cpu.enable_syscalls();
     log.ok("System calls enabled! ", .{});
-    arch.firmware.init(global_bootinfo.rsdp_addr);
+    arch.firmware.init(bootinfo.rsdp_addr);
     // const currentCore = smp.get_current_core();
     // proc.prepareCoreRunQueue(currentCore.logical_id, &currentCore.runQueue);
     // log.debug("BSP RunQueue ready! Values: {any}", .{currentCore.runQueue});

@@ -11,8 +11,6 @@ var total_pages: usize = 0;
 var free_memory_start: usize = 0;
 var lock = Spinlock{};
 
-extern var kernel_vma_end: u8;
-
 fn set_bit(bit: usize) void {
     bitmap[bit / 8] |= @as(u8, 1) << @intCast(bit % 8);
 }
@@ -33,8 +31,7 @@ fn align_up(addr: usize) usize {
 
 pub fn init(kernel_start: usize, kernel_size: usize) void {
     log.info("(PMM) Initializing physical memory manager...", .{});
-    _ = kernel_size;
-    const kernel_end = @intFromPtr(&kernel_vma_end) - arch.memory.KERNEL_VIRTUAL_OFFSET;
+    const kernel_end = kernel_start + kernel_size;
     const memory_map = arch.memory.memory_map();
     total_pages = arch.memory.max_ram() / arch.memory.PAGE_SIZE;
 
@@ -72,22 +69,6 @@ fn init_region(base: u64, length: u64) void {
         clear_bit(page_idx);
         page_idx += 1;
     }
-}
-
-pub fn get_bitmap_addr() usize {
-    return @intFromPtr(bitmap);
-}
-
-pub fn get_bitmap_size() usize {
-    return bitmap_size;
-}
-
-pub fn get_page_count() usize {
-    return total_pages;
-}
-
-pub fn apply_bitmap_virtual_offset() void {
-    bitmap = @ptrFromInt(@intFromPtr(bitmap) + arch.memory.MEMORY_OFFSET);
 }
 
 fn deinit_region(base: u64, length: u64) void {

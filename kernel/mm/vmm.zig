@@ -4,14 +4,11 @@ const log = @import("klog");
 const Flags = @import("root.zig").Flags;
 const mmap = @import("./memory_map.zig");
 
-var is_paging_enabled: bool = false;
-var kernel_directory: u32 = undefined;
-var virtual_kernel_directory: usize = undefined;
+pub var is_paging_enabled: bool = false;
+pub var kernel_directory: u32 = undefined;
 
 extern var kernel_vma_start: u8;
 extern var kernel_vma_end: u8;
-
-export var kernel_stack: [16384]u8 align(16) = undefined;
 
 pub fn init(kernel_phys: usize) void {
     log.info("(VMM) Initializing Virtual Memory Management", .{});
@@ -34,10 +31,9 @@ pub fn init(kernel_phys: usize) void {
 
         var current_addr: usize = region.base;
         while (current_addr < (region.base + region.len)) : (current_addr += arch.memory.PAGE_SIZE) {
-            if (current_addr < 0x100000) {
-                arch.paging.map(phys_page_dir, current_addr, current_addr, flags) catch
-                    @panic("Failed to map page for Identity Mapping!");
-            }
+            // Identity Mapping
+            arch.paging.map(phys_page_dir, current_addr, current_addr, flags) catch
+                @panic("Failed to map page for Identity Mapping!");
 
             const virt_offset = current_addr + arch.memory.MEMORY_OFFSET;
             arch.paging.map(phys_page_dir, virt_offset, current_addr, flags) catch
@@ -53,18 +49,9 @@ pub fn init(kernel_phys: usize) void {
     log.ok("Kernel Virtual Memory mapped!", .{});
     log.debug("Loading page directory...", .{});
     kernel_directory = @intCast(phys_page_dir);
-    virtual_kernel_directory = phys_page_dir + arch.memory.MEMORY_OFFSET;
     arch.paging.load_page_directory(kernel_directory);
     arch.paging.set_paging_enabled();
     log.ok("(VMM) Virtual Memory Manager initialized successfully!", .{});
-}
-
-pub fn get_phys_kernel_dir() u32 {
-    return kernel_directory;
-}
-
-pub fn get_virtual_kernel_dir() usize {
-    return virtual_kernel_directory;
 }
 
 fn mapKernelVma(kernel_phys: usize, page_dir: usize, flags: usize) !void {

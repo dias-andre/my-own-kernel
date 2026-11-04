@@ -49,11 +49,6 @@ debug: $(IMAGE_FILE) $(UEFI_BIOS)
 		-drive format=raw,file=$(IMAGE_FILE) -net none \
 		-serial stdio -smp 4 -no-reboot -d int
 
-gdb: $(IMAGE_FILE) $(UEFI_BIOS)
-	qemu-system-x86_64 -bios $(UEFI_BIOS) \
-		-drive format=raw,file=$(IMAGE_FILE) -net none \
-		-serial stdio -smp 4 -no-reboot -d int -s -S
-
 # Shows which files Make is seeing (Makefile Debug)
 info:
 	@echo "Current Zig version: $(shell zig version) (recomended: 0.15)"

@@ -86,7 +86,8 @@ fn hasErrorCode(i: u64) bool {
 fn makeIsr(comptime i: u8) fn () callconv(.naked) void {
     return struct {
         fn handler() callconv(.naked) void {
-            asm volatile ((if (!hasErrorCode(i)) "push $0\n" else "") ++
+            asm volatile (
+                (if (!hasErrorCode(i)) "push 0\n" else "") ++
                     "push %[idx]\n" ++
                     "jmp isr_common_stub"
                 :

@@ -36,14 +36,24 @@ pub const PageTable = extern struct {
 };
 
 pub var is_paging_ready: bool = false;
+var alloc_phys_page: ?AllocatorFn = null;
+
+const AllocatorFn = *const fn () ?usize;
 
 pub fn map(page_directory: usize, virt: usize, phys: usize, flags: usize) !void {
+    if (alloc_phys_page == null) {
+        @panic("CRITICAL: alloc_phys_page IS NULL! set_physical_allocator failed.");
+    }
     const page_table: *PageTable = @ptrFromInt(page_directory);
     try map_page(page_table, virt, phys, generic_to_arch_flags(flags));
 }
 
 pub fn set_paging_enabled() void {
     is_paging_ready = true;
+}
+
+pub fn set_physical_allocator(alloc: AllocatorFn) void {
+    alloc_phys_page = alloc;
 }
 
 pub fn load_page_directory(virt_addr: usize) void {
@@ -131,11 +141,11 @@ fn map_page(pml4: *PageTable, virt_addr: usize, phys_addr: usize, flags: usize) 
 
 fn get_next_table(entry: *u64) !*PageTable {
     const addr = entry.*;
+    const allocator = alloc_phys_page orelse return error.PageAllocatorIsNull;
 
     if ((addr & PAGE_PRESENT) == 0) {
-        const new_table_phys = try kmem.alloc_page();
-        const new_table_virt = if (is_paging_ready) new_table_phys + memory.MEMORY_OFFSET else new_table_phys;
-        const new_table_ptr: *PageTable = @ptrFromInt(new_table_virt);
+        const new_table_phys = allocator() orelse return error.OutOfMemory;
+        const new_table_ptr: *PageTable = @ptrFromInt(new_table_phys);
 
         entry.* = new_table_phys | PAGE_PRESENT | PAGE_RW;
         new_table_ptr.clear();
@@ -143,9 +153,84 @@ fn get_next_table(entry: *u64) !*PageTable {
     }
 
     const phys_addr = addr & PAGE_ADDR_MASK;
+    // return @ptrFromInt(phys_addr);
+    // return index.phys_to_ptr(PageTable, phys_addr);
     if (is_paging_ready) {
         return memory.phys_to_ptr(PageTable, phys_addr);
     } else {
         return @ptrFromInt(phys_addr);
     }
+}
+
+pub fn clone_pml4(parent_pml4_phys: usize) !usize {
+    const allocator = alloc_phys_page orelse {
+        @panic("PAGING ERROR: Paging allocator not configured!");
+    };
+    const child_pml4_phys = allocator() orelse return error.OutOfMemory;
+    const parent_table = memory.phys_to_ptr(PageTable, parent_pml4_phys);
+    const child_table = memory.phys_to_ptr(PageTable, child_pml4_phys);
+
+    child_table.clear();
+    for (0..512) |i| {
+        const entry = parent_table.entries[i];
+
+        if ((entry & PAGE_PRESENT) == 0) continue;
+
+        if (i >= 256) {
+            child_table.entries[i] = entry;
+        } else {
+            const child_pdpt_phys = try clone_table(entry, 3);
+            const flags = entry & ~PAGE_ADDR_MASK;
+            child_table.entries[i] = child_pdpt_phys | flags;
+        }
+    }
+
+    return child_pml4_phys;
+}
+
+fn clone_table(parent_entry: u64, level: u8) !usize {
+    const parent_phys = parent_entry & PAGE_ADDR_MASK;
+    const parent_table = memory.phys_to_ptr(PageTable, parent_phys);
+
+    const child_table_phys = alloc_phys_page();
+    const child_table = memory.phys_to_ptr(PageTable, child_table_phys);
+
+    for (0..512) |i| {
+        const entry = parent_table.entries[i];
+        if ((entry & PAGE_PRESENT) == 0) continue;
+
+        const flags = entry & ~PAGE_ADDR_MASK;
+        if (level == 2) {
+            const child_pt_phys = try clone_page_table(entry);
+            child_table.entries[i] = child_pt_phys | flags;
+        } else {
+            const child_next_phys = try clone_table(entry, level - 1);
+            child_table.entries[i] = child_next_phys | flags;
+        }
+    }
+    return child_table_phys;
+}
+
+fn clone_page_table(parent_pt_entry: u64) !usize {
+    const parent_pt_phys = parent_pt_entry & PAGE_ADDR_MASK;
+    const parent_pt = memory.phys_to_ptr(PageTable, parent_pt_phys);
+    const child_pt_phys = alloc_phys_page();
+    const child_pt = memory.phys_to_ptr(PageTable, child_pt_phys);
+    child_pt.clear();
+
+    for (0..512) |i| {
+        const entry = parent_pt.entries[i];
+        if ((entry & PAGE_PRESENT) == 0) continue;
+
+        const flags = entry & ~PAGE_ADDR_MASK;
+        const parent_page_phys = entry & PAGE_ADDR_MASK;
+        const child_page_phys = alloc_phys_page();
+        const src_ptr = memory.phys_to_ptr([4096]u8, parent_page_phys);
+        const dst_ptr = memory.phys_to_ptr([4096]u8, child_page_phys);
+
+        @memcpy(dst_ptr, src_ptr);
+
+        child_pt.entries[i] = child_page_phys | flags;
+    }
+    return child_pt_phys;
 }
