@@ -71,3 +71,7 @@ make info
 ├── linker.ld            # Linker script (UEFI boot path)
 └── Makefile             # Build automation
 ```
+
+## License
+
+This project is licensed under the MIT License.
